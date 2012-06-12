@@ -1,0 +1,5 @@
+#block-the-aim-taxonomy-menu-the-aim-taxonomy-menu ul.list { margin: 0; padding: 0; }
+#block-the-aim-taxonomy-menu-the-aim-taxonomy-menu ul.list > li { display: inline; }
+#block-the-aim-taxonomy-menu-the-aim-taxonomy-menu ul.list > li a { padding: 5px 10px; }
+#block-the-aim-taxonomy-menu-the-aim-taxonomy-menu ul.list > li > ul { display: none; border: 1px solid grey;  }
+#block-the-aim-taxonomy-menu-the-aim-taxonomy-menu ul.list > li:hover > ul { display: block; }
