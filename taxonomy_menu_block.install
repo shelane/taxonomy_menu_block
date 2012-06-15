@@ -8,6 +8,5 @@
  * Implementation of hook_uninstall();
  */
 function taxonomy_menu_block_uninstall() {
-  variable_del('taxonomy_menu_block_vid');
-  variable_del('taxonomy_menu_block_count');
+  variable_del('taxonomy_menu_block');
 }
