@@ -32,6 +32,15 @@ function taxonomy_menu_block_menu() {
       'access arguments' => array('administer taxonomy menu block'),
       'file' => 'taxonomy_menu_block.settings.inc',
   );
+  // page where we clone blocks
+  $items['admin/config/development/taxonomy_menu_block/clone/%'] = array(
+      'title' => 'Clone a taxonomy menu block',
+      'page callback' => 'taxonomy_menu_block_form_clone',
+      'page arguments' => array(5),
+      'type' => MENU_CALLBACK,
+      'access arguments' => array('administer taxonomy menu block'),
+      'file' => 'taxonomy_menu_block.settings.inc',
+  );
   // page where we delete blocks
   $items['admin/config/development/taxonomy_menu_block/delete/%'] = array(
       'title' => 'Delete a taxonomy menu block',
@@ -49,23 +58,56 @@ function taxonomy_menu_block_menu() {
  */
 function taxonomy_menu_block_form_validate($form, &$form_state) {
   // check if we have valid values
-  if ($form_state['values']['depth'] == '0' || ((!empty($form_state['values']['depth'])) && (!ctype_digit($form_state['values']['depth']))))
+  if ($form_state['values']['depth'] == '0' || (!empty($form_state['values']['depth']) && !ctype_digit($form_state['values']['depth'])))
     form_set_error('depth', t('Depth must be a positive numeric value'));
-  if ((!empty($form_state['values']['level_as_text'])) && (!ctype_digit($form_state['values']['level_as_text'])))
-    form_set_error('level_as_text', t('Text level must be a numeric value'));
+  if ($form_state['values']['level_as_text'] == '0' || (!empty($form_state['values']['level_as_text']) && !ctype_digit($form_state['values']['level_as_text'])))
+    form_set_error('level_as_text', t('Text level must be a positive numeric value'));
+
+  // check if our starting level is valid
+  if ($form_state['values']['starting_level'] == '0' || (!empty($form_state['values']['starting_level']) && !ctype_digit($form_state['values']['starting_level']))) {
+    form_set_error('starting_level', t('Starting level must be a positive numeric value'));
+  } else {
+    // check how deep our tree goes, user cannot enter a value higher than this
+    global $language;
+    $lang = $language->language;
+    $tree = taxonomy_menu_block_get_tree($form_state['values']['vid'], $lang);
+    $total_depth = 0;
+    foreach ($tree as $term) {
+      if ($term->depth > $total_depth)
+        $total_depth = $term->depth;
+    }
+    if ($form_state['values']['starting_level'] > $total_depth)
+      form_set_error('starting_level', t('Your starting level cannot be deeper than the maximum depth of your taxonomy'));
+  }
+
+  // check if depth is higher than starting level
+  if (!empty($form_state['values']['depth']) && ($form_state['values']['depth'] < $form_state['values']['starting_level']))
+    form_set_error('depth', t('Depth must always be higher than starting level'));
+
+  // check css classes field
+  if (!empty($form_state['values']['extra_classes'])) {
+    $allowed = "#[^a-z0-9\s-_]#i";
+    preg_match($allowed, $form_state['values']['extra_classes'], $matches);
+    if (!empty($matches))
+      form_set_error('extra_classes', t('Extra CSS classes can only contain letters, numbers, underscores and spaces'));
+  }
 }
 
 /**
  * Submit function for our taxonomy_menu_block_form form
  */
 function taxonomy_menu_block_form_submit($form, &$form_state) {
-
   // add our block values to a new array
   $tmb['vid'] = $form_state['values']['vid'];
   $tmb['name'] = $form_state['values']['name'];
-  $tmb['depth'] = $form_state['values']['depth'];
-  $tmb['level_as_text'] = $form_state['values']['level_as_text'];
+  $tmb['depth'] = !empty($form_state['values']['depth']) ? $form_state['values']['depth'] : NULL;
+  // subtract 1 here and add it again later in the form.
+  // drupal uses 0 as lowest value, we use 1 as lowest value to not confuse our user
+  $tmb['level_as_text'] = !empty($form_state['values']['level_as_text']) ? $form_state['values']['level_as_text'] - 1 : NULL;
+  $tmb['starting_level'] = !empty($form_state['values']['starting_level']) ? $form_state['values']['starting_level'] - 1 : NULL;
   $tmb['node_count'] = $form_state['values']['node_count'];
+  $tmb['active_trail'] = $form_state['values']['active_trail'];
+  $tmb['extra_classes'] = $form_state['values']['extra_classes'];
 
   // get our taxonomy_menu_block variable, which stores everything in a serialized nested array
   $tmb_array = variable_get('taxonomy_menu_block', $default = NULL);
@@ -74,16 +116,17 @@ function taxonomy_menu_block_form_submit($form, &$form_state) {
   // if we have a NEW block
   if (empty($form_state['values']['delta'])) {
     // make a unique machine name
+    // this can probably be done in a more efficient way
     $delta = preg_replace('/[^a-zA-Z0-9]/', '_', strtolower($form_state['values']['name']));
     if (!empty($tmb_array) && (array_key_exists($delta, $tmb_array)))
       $delta = $delta . '_';
     $tmb_array[$delta] = $tmb;
-    $msg = t('New taxonomy menu block added');
+    $msg = t('New taxonomy menu block <i>' . $tmb['name'] . '</i> added');
   }
   // if we have an EXISTING block that needs to be edited
   else {
     $tmb_array[$form_state['values']['delta']] = $tmb;
-    $msg = t('Taxonomy menu block edited');
+    $msg = t('Taxonomy menu block <i>' . $tmb['name'] . '</i> edited');
   }
 
   // save our taxonomy block variable
@@ -92,6 +135,7 @@ function taxonomy_menu_block_form_submit($form, &$form_state) {
 
   $form_state['redirect'] = 'admin/config/development/taxonomy_menu_block';
 
+  drupal_get_messages(); // reset other possible messages that might still be displayed
   drupal_set_message($msg, 'status');
 }
 
@@ -102,13 +146,16 @@ function taxonomy_menu_block_form_delete_submit($form, &$form_state) {
   $tmb_array = variable_get('taxonomy_menu_block', $default = NULL);
   $tmb_array = unserialize($tmb_array);
 
+  // remember the name for confirmation msg
+  $tmb = $tmb_array[$form_state['values']['delta']]['name'];
+
   unset($tmb_array[$form_state['values']['delta']]);
 
   $tmb_array = serialize($tmb_array);
   variable_set('taxonomy_menu_block', $tmb_array);
 
   $form_state['redirect'] = 'admin/config/development/taxonomy_menu_block';
-  drupal_set_message(t('Taxonomy menu block deleted'), 'status');
+  drupal_set_message(t('Taxonomy menu block <i>' . $tmb . '</i> deleted'), 'status');
 }
 
 /**
@@ -143,15 +190,16 @@ function taxonomy_menu_block_block_view($delta = '') {
       if ($delta == $tmb_delta) {
         $block = array();
         $block['subject'] = $tmb['name'];
-        // depth cannot be 0 but has to be NULL
-        if (empty($tmb['depth']))
-          $depth = NULL;
-        else
-          $depth = $tmb['depth'];
 
-        $active_trail = taxonomy_menu_block_find_active($tmb['vid']);
-        $tree = taxonomy_menu_block_build_taxonomy_tree($tmb['vid'], $depth);
-        $items = taxonomy_menu_block_generate_menu($tree, $active_trail, $tmb['node_count'], $tmb['level_as_text']);
+        // get active trail, if needed
+        if ($tmb['active_trail'] == '1')
+          $active_trail = taxonomy_menu_block_find_active($tmb['vid']);
+        else
+          $active_trail = NULL;
+
+        // build tree
+        $tree = taxonomy_menu_block_build_taxonomy_tree($tmb['vid'], $tmb['depth'], $tmb['starting_level']);
+        $items = taxonomy_menu_block_generate_menu($tree, $tmb, $active_trail);
 
         $content = theme('taxonomy_menu_block', array('items' => $items));
         $block['content'] = $content;
@@ -162,17 +210,10 @@ function taxonomy_menu_block_block_view($delta = '') {
   }
 }
 
-/**
- * preprocess function
- * @param array $variables 
- *//*
-function template_preprocess_taxonomy_menu_block(&$variables) {
-  $variables['content'] = taxonomy_menu_block_generate_markup($variables['items']);
-}*/
-
 /*
  * function to generate markup for our list
  */
+
 function theme_taxonomy_menu_block($variables) {
   $items = $variables['items'];
   $output = '<ul class="tmb">';
@@ -196,41 +237,46 @@ function theme_taxonomy_menu_block($variables) {
 
 /**
  * Build our nested array that we will use to pass on to Drupal's theme_list_item function
+ * This is where we set all our options 
  * @param type $tree
  * @param type $active_trail
  * @param type $node_count
  * @param type $level_as_text
  * @return type 
  */
-function taxonomy_menu_block_generate_menu($tree, $active_trail = NULL, $node_count = NULL, $level_as_text = NULL) {
+function taxonomy_menu_block_generate_menu($tree, $tmb, $active_trail = NULL) {
 
   foreach ($tree as $tid => $term) {
     $item = array();
 
-    $item['class'][] = 'level-' . $term->depth;
+    // add css classes
+    $item['class'][] = 'level-' . ($term->depth + 1);
     if (isset($active_trail) && in_array($tid, $active_trail))
       $item['class'][] = 'active-trail';
     if (isset($active_trail) && $tid == $active_trail[0])
       $item['class'][] = 'active';
+    if (!empty($tmb['extra_classes'])) {
+      $classes = explode(' ', $tmb['extra_classes']);
+      $item['class'] = array_merge($item['class'], $classes);
+    }
 
     $title = $term->name;
-    if ($node_count == 1) {
+    if ($tmb['node_count'] == 1) {
       $title .= t(' (@count)', array('@count' => taxonomy_menu_block_count_nodes_term($term->tid)));
     }
 
-    if ($level_as_text == '' || ($level_as_text != '' && $level_as_text != $term->depth))
+    if ($tmb['level_as_text'] == '' || ($tmb['level_as_text'] != '' && $tmb['level_as_text'] != $term->depth))
       $item['data'] = l($title, 'taxonomy/term/' . $term->tid);
     else
       $item['data'] = $title;
 
     if (isset($term->children)) {
-      $item['children'] = taxonomy_menu_block_generate_menu($term->children, $active_trail, $node_count, $level_as_text);
+      $item['children'] = taxonomy_menu_block_generate_menu($term->children, $tmb, $active_trail);
     }
 
-    //dpm($item);
     $items[] = $item;
   }
-  //dpm($items);
+
   return $items;
 }
 
@@ -254,23 +300,39 @@ function taxonomy_menu_block_theme() {
  * @param object $parent[optional]
  * @param object $max_depth[optional]
  */
-function taxonomy_menu_block_build_taxonomy_tree($vid, $depth = NULL) {
-  static $results;
-  $args = func_get_args();
-  $hash = md5(implode('-', $args));
-  if (!isset($results[$hash])) {
-    $terms = array();
-    global $language;
-    $lang = $language->language;
-    $data = taxonomy_menu_block_get_tree($vid, $lang, 0, $depth);
-    foreach ($data as $term) {
+function taxonomy_menu_block_build_taxonomy_tree($vid, $depth = NULL, $starting_level = NULL) {
+
+  $terms = array();
+  global $language;
+  $lang = $language->language;
+  $data = taxonomy_menu_block_get_tree($vid, $lang, 0, $depth);
+  foreach ($data as $term) {
+    if ($term->depth >= $starting_level)
       $terms[$term->tid] = $term;
-    }
-    //dpm($terms);
-    $terms = taxonomy_menu_block_nest_taxonomy_terms($terms);
-    $results[$hash] = $terms;
   }
-  return $results[$hash];
+  $terms = taxonomy_menu_block_nest_taxonomy_terms($terms);
+
+  return $terms;
+}
+
+/**
+ * Function to generate our taxonomy tree, taking into account i18n
+ * @param type $vid
+ * @param string $lang
+ * @param type $parent
+ * @return type 
+ */
+function taxonomy_menu_block_get_tree($vid, $lang, $parent = 0, $depth = NULL) {
+  if (module_exists('i18n_taxonomy')) {
+    $data = i18n_taxonomy_get_tree($vid, $lang, $parent, $depth);
+    if ((isset($data)) && (count($data) == 0)) {
+      $lang = 'und';
+      $data = i18n_taxonomy_get_tree($vid, $lang, $parent, $depth);
+    }
+  } else {
+    $data = taxonomy_get_tree($vid, $parent, $depth);
+  }
+  return $data;
 }
 
 /**
@@ -281,40 +343,26 @@ function taxonomy_menu_block_build_taxonomy_tree($vid, $depth = NULL) {
  * @param object $parent
  */
 function taxonomy_menu_block_nest_taxonomy_terms($terms) {
+
   foreach ($terms as $term) {
     $parent_tid = isset($term->parents[0]) ? $term->parents[0] : 0;
 
-    if ($parent_tid) {
-      if (isset($terms[$parent_tid])) {
-        $terms[$parent_tid]->children[$term->tid] = $term;
-        unset($terms[$term->tid]);
-      } elseif ($parent_tid != 0) {
-        taxonomy_menu_block_nest_taxonomy_terms_child($terms, $parent_tid, $term);
-        unset($terms[$term->tid]);
-      }
+    // if terms have a parent id that is not 0 & is in the array
+    if ($parent_tid && isset($terms[$parent_tid])) {
+      $terms[$parent_tid]->children[$term->tid] = $term;
+      // remember terms that get nested and that we must delete
+      $to_delete[] = $term->tid;
+    }
+  }
+
+  // loop through our to_delete terms
+  if (isset($to_delete)) {
+    foreach ($to_delete as $delete) {
+      unset($terms[$delete]);
     }
   }
 
   return $terms;
-}
-
-/**
- * Recursive function which nests the child element within the appropriate
- * parent element in the given terms tree.
- * @return 
- * @param object $terms
- * @param object $parent_tid
- * @param object $child
- */
-function taxonomy_menu_block_nest_taxonomy_terms_child(&$terms, $parent_tid, $child) {
-  foreach ($terms as &$term) {
-    if ($term->tid == $parent_tid) {
-      $term->children[$child->tid] = $child;
-      break;
-    } elseif (!empty($term->children)) {
-      taxonomy_menu_block_nest_taxonomy_terms_child($term->children, $parent_tid, $child);
-    }
-  }
 }
 
 /**
@@ -333,7 +381,6 @@ function taxonomy_menu_block_count_nodes_term($tid) {
 /**
  * Function to find our active trail
  * @global type $language
- * @return int 
  */
 function taxonomy_menu_block_find_active($vid) {
   global $language;
@@ -374,31 +421,4 @@ function taxonomy_menu_block_get_trail($data, $active) {
     $parent = $data[$parent]->parents[0];
   }
   return $active_trail;
-}
-
-/**
- * Function to generate our taxonomy tree, taking into account i18n
- * @param type $vid
- * @param string $lang
- * @param type $parent
- * @return type 
- */
-function taxonomy_menu_block_get_tree($vid, $lang, $parent = 0, $depth = NULL) {
-  if (module_exists('i18n_taxonomy')) {
-    $data = i18n_taxonomy_get_tree($vid, $lang, $parent, $depth);
-    if ((isset($data)) && (count($data) == 0)) {
-      $lang = 'und';
-      $data = i18n_taxonomy_get_tree($vid, $lang, $parent, $depth);
-    }
-  } else {
-    $data = taxonomy_get_tree($vid, $parent, $depth);
-  }
-  /*
-    $new_data = array();
-    foreach ($data as $term) {
-    if ($term->depth >= 1)
-    $new_data[] = $term;
-    }
-   */
-  return $data;
 }
