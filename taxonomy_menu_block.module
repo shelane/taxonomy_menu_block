@@ -1,5 +1,9 @@
 <?php
 
+/* * ************************
+ * FORMS & FORM VALIDATION 
+ */
+
 /**
  * Implementation of hook_menu();
  */
@@ -106,8 +110,21 @@ function taxonomy_menu_block_form_submit($form, &$form_state) {
   $tmb['level_as_text'] = !empty($form_state['values']['level_as_text']) ? $form_state['values']['level_as_text'] - 1 : NULL;
   $tmb['starting_level'] = !empty($form_state['values']['starting_level']) ? $form_state['values']['starting_level'] - 1 : NULL;
   $tmb['node_count'] = $form_state['values']['node_count'];
-  $tmb['active_trail'] = $form_state['values']['active_trail'];
+  $tmb['classes'] = $form_state['values']['classes'];
   $tmb['extra_classes'] = $form_state['values']['extra_classes'];
+  $tmb['active_trail'] = $form_state['values']['active_trail'];
+
+  /*
+   * WORK IN PROGRESS *
+    $tmb['active_trail_ct'] = $form_state['values']['active_trail_ct'];
+    if ($tmb['active_trail_ct'] == '1') {
+    $tmb['content_type'] = $form_state['values']['content_type'];
+    $tmb['term_reference_field'] = $form_state['values']['term_reference_field'];
+    } else {
+    $tmb['content_type'] = NULL;
+    $tmb['term_reference_field'] = NULL;
+    }
+   */
 
   // get our taxonomy_menu_block variable, which stores everything in a serialized nested array
   $tmb_array = variable_get('taxonomy_menu_block', $default = NULL);
@@ -158,6 +175,10 @@ function taxonomy_menu_block_form_delete_submit($form, &$form_state) {
   drupal_set_message(t('Taxonomy menu block <i>' . $tmb . '</i> deleted'), 'status');
 }
 
+/* * ******
+ * BLOCKS
+ */
+
 /**
  * Implementation of hook_block_info();
  */
@@ -191,23 +212,39 @@ function taxonomy_menu_block_block_view($delta = '') {
         $block = array();
         $block['subject'] = $tmb['name'];
 
-        // get active trail, if needed
-        if ($tmb['active_trail'] == '1')
-          $active_trail = taxonomy_menu_block_find_active($tmb['vid']);
-        else
-          $active_trail = NULL;
+        // build tree & active trail
+        // this will return an array with two entries, one for our (nested) tree and one for our active trail
+        $result = taxonomy_menu_block_build_taxonomy_tree($tmb);
 
-        // build tree
-        $tree = taxonomy_menu_block_build_taxonomy_tree($tmb['vid'], $tmb['depth'], $tmb['starting_level']);
-        $items = taxonomy_menu_block_generate_menu($tree, $tmb, $active_trail);
-
-        $content = theme('taxonomy_menu_block', array('items' => $items));
-        $block['content'] = $content;
+        // if we have results, continue
+        if (!empty($result['terms'])) {
+          $items = taxonomy_menu_block_generate_menu($tmb, $result);
+          $content = theme('taxonomy_menu_block', array('items' => $items));
+          $block['content'] = $content;
+        } else {
+          $block['content'] = t('No terms to display.');
+        }
 
         return $block;
       }
     }
   }
+}
+
+/* * ****************
+ * THEMING & MARKUP
+ */
+
+/*
+ * Implementation of hook_theme
+ */
+
+function taxonomy_menu_block_theme() {
+  return array(
+      'taxonomy_menu_block' => array(
+          'variables' => array('items' => NULL),
+      ),
+  );
 }
 
 /*
@@ -226,7 +263,6 @@ function theme_taxonomy_menu_block($variables) {
     $output .= '>';
     $output .= $item['data'];
     if (isset($item['children'])) {
-      //$variables['items'] = $item['children'];
       $output .= theme_taxonomy_menu_block(array('items' => $item['children']));
     }
     $output .= '</li>';
@@ -244,13 +280,17 @@ function theme_taxonomy_menu_block($variables) {
  * @param type $level_as_text
  * @return type 
  */
-function taxonomy_menu_block_generate_menu($tree, $tmb, $active_trail = NULL) {
+function taxonomy_menu_block_generate_menu($tmb, $result) {
+
+  $tree = $result['terms'];
+  $active_trail = $result['active_trail'];
 
   foreach ($tree as $tid => $term) {
     $item = array();
 
     // add css classes
-    $item['class'][] = 'level-' . ($term->depth + 1);
+    if ($tmb['classes'] == 1)
+      $item['class'][] = 'level-' . ($term->depth + 1);
     if (isset($active_trail) && in_array($tid, $active_trail))
       $item['class'][] = 'active-trail';
     if (isset($active_trail) && $tid == $active_trail[0])
@@ -272,7 +312,8 @@ function taxonomy_menu_block_generate_menu($tree, $tmb, $active_trail = NULL) {
       $item['data'] = $title;
 
     if (isset($term->children)) {
-      $item['children'] = taxonomy_menu_block_generate_menu($term->children, $tmb, $active_trail);
+      $result['terms'] = $term->children;
+      $item['children'] = taxonomy_menu_block_generate_menu($tmb, $result);
     }
 
     $items[] = $item;
@@ -281,18 +322,9 @@ function taxonomy_menu_block_generate_menu($tree, $tmb, $active_trail = NULL) {
   return $items;
 }
 
-/*
- * Implementation of hook_theme
+/* * ***************
+ * FUNCTIONALITIES
  */
-
-function taxonomy_menu_block_theme() {
-  return array(
-      'taxonomy_menu_block' => array(
-          //'template' => 'taxonomy_menu_block',
-          'variables' => array('items' => NULL),
-      ),
-  );
-}
 
 /**
  * Generates & returns a nested array of taxonomy terms for the specified vocabulary id;
@@ -301,19 +333,27 @@ function taxonomy_menu_block_theme() {
  * @param object $parent[optional]
  * @param object $max_depth[optional]
  */
-function taxonomy_menu_block_build_taxonomy_tree($vid, $depth = NULL, $starting_level = NULL) {
+function taxonomy_menu_block_build_taxonomy_tree($tmb) {
 
   $terms = array();
   global $language;
-  $lang = $language->language;
-  $data = taxonomy_menu_block_get_tree($vid, $lang, 0, $depth);
+  $data = taxonomy_menu_block_get_tree($tmb['vid'], $language->language, 0, $tmb['depth']);
+
+  // get active trail, if needed & if we have terms
+  // we do this here so we only need to call function taxonomy_menu_block_find_active once
+  // also we need to do this before we nest our array because function taxonomy_menu_block_find_active needs a flat array
+  if ($tmb['active_trail'] == 1 && !empty($data))
+    $result['active_trail'] = taxonomy_menu_block_find_active($tmb, $data);
+  else
+    $result['active_trail'] = NULL;
+
   foreach ($data as $term) {
-    if ($term->depth >= $starting_level)
+    if ($term->depth >= $tmb['starting_level'])
       $terms[$term->tid] = $term;
   }
-  $terms = taxonomy_menu_block_nest_taxonomy_terms($terms);
+  $result['terms'] = taxonomy_menu_block_nest_taxonomy_terms($terms);
 
-  return $terms;
+  return $result;
 }
 
 /**
@@ -333,6 +373,7 @@ function taxonomy_menu_block_get_tree($vid, $lang, $parent = 0, $depth = NULL) {
   } else {
     $data = taxonomy_get_tree($vid, $parent, $depth);
   }
+
   return $data;
 }
 
@@ -383,17 +424,32 @@ function taxonomy_menu_block_count_nodes_term($tid) {
  * Function to find our active trail
  * @global type $language
  */
-function taxonomy_menu_block_find_active($vid) {
-  global $language;
-  $lang = $language->language;
-  $data = taxonomy_menu_block_get_tree($vid, $lang);
+function taxonomy_menu_block_find_active($tmb, $data) {
 
-  // find active term
-  foreach ($data as $key => $value) {
-    $path = 'taxonomy/term/' . $value->tid;
-    if (($path == $_GET['q'] || ($path == '<front>' && drupal_is_front_page())) && (empty($options['language']) || $options['language']->language == $language_url->language))
+  // find active item
+  // for node pages
+  /*
+   * WORK IN PROGRESS *
+    if (arg(0) == 'node' && is_numeric(arg(1)) && $tmb['active_trail_ct'] == 1) {
+    $node = node_load(arg(1));
+    if ($node->type == $tmb['content_type']) {
+    $term_ref = $node->$tmb['term_reference_field'];
+    // check if term reference field is actually filled in
+    if (!empty($term_ref)) {
+    foreach ($data as $value) {
+    if ($term_ref['und'][0]['tid'] == $value->tid)
+    $active = $value;
+    }
+    }
+    }
+    // for taxonomy pages
+    } else {
+   */
+  foreach ($data as $value) {
+    if (arg(2) == $value->tid)
       $active = $value;
   }
+  //}
 
   if (isset($active)) {
     // structure data array
