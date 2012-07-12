@@ -1,7 +1,7 @@
 <?php
 
 /* * ************************
- * FORMS & FORM VALIDATION 
+ * FORMS & FORM VALIDATION
  */
 
 /**
@@ -110,21 +110,18 @@ function taxonomy_menu_block_form_submit($form, &$form_state) {
   $tmb['level_as_text'] = !empty($form_state['values']['level_as_text']) ? $form_state['values']['level_as_text'] - 1 : NULL;
   $tmb['starting_level'] = !empty($form_state['values']['starting_level']) ? $form_state['values']['starting_level'] - 1 : NULL;
   $tmb['node_count'] = $form_state['values']['node_count'];
+  $tmb['orphan_terms'] = $form_state['values']['orphan_terms'];
   $tmb['classes'] = $form_state['values']['classes'];
   $tmb['extra_classes'] = $form_state['values']['extra_classes'];
   $tmb['active_trail'] = $form_state['values']['active_trail'];
-
-  /*
-   * WORK IN PROGRESS *
-    $tmb['active_trail_ct'] = $form_state['values']['active_trail_ct'];
-    if ($tmb['active_trail_ct'] == '1') {
+  $tmb['active_trail_ct'] = $form_state['values']['active_trail_ct'];
+  if ($tmb['active_trail_ct'] == 1) {
     $tmb['content_type'] = $form_state['values']['content_type'];
     $tmb['term_reference_field'] = $form_state['values']['term_reference_field'];
-    } else {
+  } else {
     $tmb['content_type'] = NULL;
     $tmb['term_reference_field'] = NULL;
-    }
-   */
+  }
 
   // get our taxonomy_menu_block variable, which stores everything in a serialized nested array
   $tmb_array = variable_get('taxonomy_menu_block', $default = NULL);
@@ -273,12 +270,12 @@ function theme_taxonomy_menu_block($variables) {
 
 /**
  * Build our nested array that we will use to pass on to Drupal's theme_list_item function
- * This is where we set all our options 
+ * This is where we set all our options
  * @param type $tree
  * @param type $active_trail
  * @param type $node_count
  * @param type $level_as_text
- * @return type 
+ * @return type
  */
 function taxonomy_menu_block_generate_menu($tmb, $result) {
 
@@ -305,9 +302,8 @@ function taxonomy_menu_block_generate_menu($tmb, $result) {
       $title .= t(' (@count)', array('@count' => taxonomy_menu_block_count_nodes_term($term->tid)));
     }
 
-    if ($tmb['level_as_text'] == '' || ($tmb['level_as_text'] != '' && $tmb['level_as_text'] != $term->depth)) {
+    if ($tmb['level_as_text'] == '' || ($tmb['level_as_text'] != '' && $tmb['level_as_text'] != $term->depth))
       $item['data'] = l($title, 'taxonomy/term/' . $term->tid);
-    }
     else
       $item['data'] = $title;
 
@@ -328,26 +324,38 @@ function taxonomy_menu_block_generate_menu($tmb, $result) {
 
 /**
  * Generates & returns a nested array of taxonomy terms for the specified vocabulary id;
- * @return 
- * @param object $vid
- * @param object $parent[optional]
- * @param object $max_depth[optional]
+ *
  */
 function taxonomy_menu_block_build_taxonomy_tree($tmb) {
 
   $terms = array();
   global $language;
   $data = taxonomy_menu_block_get_tree($tmb['vid'], $language->language, 0, $tmb['depth']);
-
+  
   // get active trail, if needed & if we have terms
-  // we do this here so we only need to call function taxonomy_menu_block_find_active once
-  // also we need to do this before we nest our array because function taxonomy_menu_block_find_active needs a flat array
-  if ($tmb['active_trail'] == 1 && !empty($data))
-    $result['active_trail'] = taxonomy_menu_block_find_active($tmb, $data);
-  else
+  if (!empty($data) && ($tmb['active_trail'] == 1 || $tmb['active_trail_ct'] == 1)) {
+    // check on what kind of page we are
+    $page_info = menu_get_item();
+    
+    if ($page_info['path'] == 'node/%') 
+      $object = $page_info['page_arguments'][0];
+    if ($page_info['path'] == 'taxonomy/term/%') 
+      $object = $page_info['page_arguments'][0]->tid;
+    // if we are on node or taxonomy page, get the active trail
+    if (isset($object))
+      $result['active_trail'] = taxonomy_menu_block_find_active($tmb, $data, $object);
+    else 
+      $result['active_trail'] = NULL;
+  } else {
     $result['active_trail'] = NULL;
+  }
 
   foreach ($data as $term) {
+    // sometimes i18n returns children already nested, which causes problems as we need a flat array to continue
+    // there is probably a better way to fix this
+    if (isset($term->children))
+      unset($term->children);
+
     if ($term->depth >= $tmb['starting_level'])
       $terms[$term->tid] = $term;
   }
@@ -361,7 +369,7 @@ function taxonomy_menu_block_build_taxonomy_tree($tmb) {
  * @param type $vid
  * @param string $lang
  * @param type $parent
- * @return type 
+ * @return type
  */
 function taxonomy_menu_block_get_tree($vid, $lang, $parent = 0, $depth = NULL) {
   if (module_exists('i18n_taxonomy')) {
@@ -378,9 +386,9 @@ function taxonomy_menu_block_get_tree($vid, $lang, $parent = 0, $depth = NULL) {
 }
 
 /**
- * Looks for each term's parent term in the given tree and assigns 
+ * Looks for each term's parent term in the given tree and assigns
  * the child to the parent.
- * @return 
+ * @return
  * @param object $terms
  * @param object $parent
  */
@@ -424,32 +432,35 @@ function taxonomy_menu_block_count_nodes_term($tid) {
  * Function to find our active trail
  * @global type $language
  */
-function taxonomy_menu_block_find_active($tmb, $data) {
+function taxonomy_menu_block_find_active($tmb, $data, $object) {
 
   // find active item
   // for node pages
-  /*
-   * WORK IN PROGRESS *
-    if (arg(0) == 'node' && is_numeric(arg(1)) && $tmb['active_trail_ct'] == 1) {
-    $node = node_load(arg(1));
-    if ($node->type == $tmb['content_type']) {
-    $term_ref = $node->$tmb['term_reference_field'];
-    // check if term reference field is actually filled in
-    if (!empty($term_ref)) {
-    foreach ($data as $value) {
-    if ($term_ref['und'][0]['tid'] == $value->tid)
-    $active = $value;
-    }
-    }
+  if (isset($object->nid)) {
+    if ($object->type == $tmb['content_type']) {
+      $term_ref = $object->$tmb['term_reference_field'];
+      // check for taxonomy term ref
+      if (isset($term_ref['und'][0]['tid']))
+        $reference = $term_ref['und'][0]['tid'];
+      //check for entity reference
+      if (isset($term_ref['und'][0]['target_id']))
+        $reference = $term_ref['und'][0]['target_id'];
+      
+      // check if term reference field is actually filled in
+      if (isset($reference)) {
+        foreach ($data as $value) {
+          if ($reference == $value->tid)
+            $active = $value;
+        }
+      }
     }
     // for taxonomy pages
-    } else {
-   */
-  foreach ($data as $value) {
-    if (arg(2) == $value->tid)
-      $active = $value;
+  } else {
+    foreach ($data as $value) {
+      if ($object == $value->tid)
+        $active = $value;
+    }
   }
-  //}
 
   if (isset($active)) {
     // structure data array
@@ -468,7 +479,7 @@ function taxonomy_menu_block_find_active($tmb, $data) {
  * Function to find possible active items that are higher up in the tree
  * @param type $data
  * @param type $active
- * @return type 
+ * @return type
  */
 function taxonomy_menu_block_get_trail($data, $active) {
   $active_trail[] = $active->tid;

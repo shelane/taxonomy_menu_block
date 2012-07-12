@@ -8,8 +8,21 @@
 /**
  * Callback for page admin/config/development/taxonomy_menu_block/add
  */
-function taxonomy_menu_block_form($form_state, $args = NULL) {
-  $form = array();
+function taxonomy_menu_block_form($form, $form_state) {
+
+  // extract existing values if we are editing/cloning and set title of form
+  if (isset($form_state['build_info']['args'][1])) {
+    $tmb = $form_state['build_info']['args'][0];
+    $title = t('Edit Taxonomy menu block - ') . $tmb['name'];
+  } elseif (isset($form_state['build_info']['args'][0]['vid'])) {
+    $tmb = $form_state['build_info']['args'][0];
+    $title = t('Clone Taxonomy menu block');
+  } else {
+    $title = t('Add a new Taxonomy menu block');
+  }
+
+  // add js & pass on our array of node & field types to jquery
+  drupal_add_js(drupal_get_path('module', 'taxonomy_menu_block') . '/taxonomy_menu_block.js');
 
   // get all taxonomy vocabularies
   $vocabs = array();
@@ -17,32 +30,10 @@ function taxonomy_menu_block_form($form_state, $args = NULL) {
     $vocabs[$vocab->vid] = $vocab->name;
   }
 
-  // extract existing values if we are editing/cloning and set title of form
-  if (isset($args['build_info']['args'][1])) {
-    $tmb = $args['build_info']['args'][0];
-    $title = t('Edit Taxonomy menu block - ') . $tmb['name'];
-  } elseif (isset($args['build_info']['args'][0]['vid'])) {
-    $tmb = $args['build_info']['args'][0];
-    $title = t('Clone Taxonomy menu block');
-  } else {
-    $title = t('Add a new Taxonomy menu block');
-  }
-  
-  // get all node types & their possible term reference fields
-  /* WORK IN PROGRESS
-  $types = node_type_get_types();
-  foreach ($types as $type) {
-    $fields = field_info_instances('node', $type->type);
-    $node_types[$type->type] = $type->name;
-    foreach ($fields as $field) {
-      if ($field['display']['default']['module'] == 'taxonomy') {
-        $node_fields[$type->type][$field['field_name']] = $field['label'];
-      }
-    }
-  }
-  */
+  $content_types = taxonomy_menu_block_ct_dropdown_options();
+  $ct = isset($tmb['content_type']) ? $tmb['content_type'] : key($content_types);
 
-
+  $form = array();
   // make form
   $form['title'] = array(
       '#type' => 'item',
@@ -50,56 +41,70 @@ function taxonomy_menu_block_form($form_state, $args = NULL) {
   );
   $form['delta'] = array(
       '#type' => 'hidden',
-      '#default_value' => !empty($args['build_info']['args'][1]) ? $args['build_info']['args'][1] : NULL,
+      '#default_value' => !empty($form_state['build_info']['args'][1]) ? $form_state['build_info']['args'][1] : NULL,
+  );
+  $form['base'] = array(
+      '#type' => 'fieldset',
+      '#title' => 'Vocabulary',
       '#weight' => 1,
   );
-  $form['vid'] = array(
+  $form['base']['vid'] = array(
       '#type' => 'select',
       '#title' => t('Select a Vocabulary'),
-      '#description' => t('Select a Vocabulary for your new block'),
       '#default_value' => !empty($tmb['vid']) ? $tmb['vid'] : '',
       '#options' => $vocabs,
-      '#weight' => 2,
   );
-  $form['name'] = array(
+  $form['base']['name'] = array(
       '#type' => 'textfield',
       '#title' => t('Name'),
       '#required' => TRUE,
       '#maxlength' => 128,
       '#description' => t('Give your block a name to recognize it on the blocks admin page. Only alphanumeric characters and spaces are allowed. Must be unique.'),
       '#default_value' => !empty($tmb['name']) ? $tmb['name'] : '',
-      '#weight' => 3,
   );
-  $form['depth'] = array(
+  $form['levels'] = array(
+      '#type' => 'fieldset',
+      '#title' => 'Levels',
+      '#description' => t('Counting starts from 1 for all the options below, i.e. 1 is the highest level in our taxonomy tree.'),
+      '#weight' => 4,
+  );
+  $form['levels']['depth'] = array(
       '#type' => 'textfield',
       '#title' => t('Depth'),
       '#size' => 1,
       '#description' => t('Until which level should your taxonomy be rendered? Leave blank to display all levels.'),
       '#default_value' => isset($tmb['depth']) ? $tmb['depth'] : '',
-      '#weight' => 4
   );
-  $form['starting_level'] = array(
+  $form['levels']['starting_level'] = array(
       '#type' => 'textfield',
       '#title' => t('Starting level'),
       '#size' => 1,
       '#description' => t('Should your taxonomy only be rendered from a certain level?'),
       '#default_value' => isset($tmb['starting_level']) ? $tmb['starting_level'] + 1 : '',
-      '#weight' => 5,
   );
-  $form['level_as_text'] = array(
+  $form['levels']['level_as_text'] = array(
       '#type' => 'textfield',
       '#title' => t('Render level as just text'),
       '#size' => 1,
-      '#description' => t('If you have a level you would like to render just a text instead of links, enter it here.'),
+      '#description' => t('Would you like to render a level as text instead of links?'),
       '#default_value' => isset($tmb['level_as_text']) ? $tmb['level_as_text'] + 1 : '',
-      '#weight' => 6,
   );
-  $form['node_count'] = array(
+  $form['node_options'] = array(
+      '#type' => 'fieldset',
+      '#title' => 'Node options',
+      '#weight' => 7,
+  );
+  $form['node_options']['node_count'] = array(
       '#type' => 'checkbox',
       '#title' => t('Show node count'),
       '#description' => t('Would you like to show the number of nodes associated with this term?'),
       '#default_value' => isset($tmb['node_count']) ? $tmb['node_count'] : '',
-      '#weight' => 7,
+  );
+  $form['node_options']['orphan_terms'] = array(
+      '#type' => 'checkbox',
+      '#title' => t('Don\'t display terms with no nodes attched'),
+      '#description' => t('Checking this option will leave out the terms that don\'t have any nodes attched to them. DOES NOT WORK YET!'),
+      '#default_value' => isset($tmb['orphan_terms']) ? $tmb['orphan_terms'] : '',
   );
   $form['css'] = array(
       '#type' => 'fieldset',
@@ -129,8 +134,6 @@ function taxonomy_menu_block_form($form_state, $args = NULL) {
       '#description' => t('Add classes "active" and "active-trail" to your list items'),
       '#default_value' => isset($tmb['active_trail']) ? $tmb['active_trail'] : '1',
   );
-  /*
-   * WORK IN PROGRESS
   $form['active_trail']['active_trail_ct'] = array(
       '#type' => 'checkbox',
       '#title' => 'Keep active trail for a certain content type?',
@@ -144,17 +147,33 @@ function taxonomy_menu_block_form($form_state, $args = NULL) {
       '#type' => 'select',
       '#title' => t('Select a content type'),
       '#description' => t('Select a content type'),
-      '#default_value' => isset($tmb['content_type']) ? $tmb['content_type'] : '',
-      '#options' => $node_types,
+      '#options' => $content_types,
+      '#default_value' => $ct,
+      // Bind an ajax callback to the change event (which is the default for the
+      // select form type) of the first dropdown. It will replace the second
+      // dropdown when rebuilt
+      '#ajax' => array(
+          // When 'event' occurs, Drupal will perform an ajax request in the
+          // background. Usually the default value is sufficient (eg. change for
+          // select elements), but valid values include any jQuery event,
+          // most notably 'mousedown', 'blur', and 'submit'.
+          'event' => 'change',
+          'callback' => 'taxonomy_menu_block_ajax_callback',
+          'wrapper' => 'dropdown_term_reference',
+      ),
   );
   $form['active_trail']['ct']['term_reference_field'] = array(
       '#type' => 'select',
       '#title' => t('Select a term reference field'),
       '#description' => t('Select a term ref'),
+      // The entire enclosing div created here gets replaced when dropdown_first
+      // is changed.
+      '#prefix' => '<div id="dropdown_term_reference">',
+      '#suffix' => '</div>',
+      '#options' => taxonomy_menu_block_term_ref_options($ct),
       '#default_value' => isset($tmb['term_reference_field']) ? $tmb['term_reference_field'] : '',
-      '#options' => $node_fields['article'],
   );
-  */
+
   $form['submit'] = array(
       '#type' => 'submit',
       '#value' => t('Submit'),
@@ -259,4 +278,51 @@ function taxonomy_menu_block_form_delete() {
   );
 
   return $form;
+}
+
+/**
+ * Selects just the second dropdown to be returned for re-rendering
+ *
+ * Since the controlling logic for populating the form is in the form builder
+ * function, all we do here is select the element and return it to be updated.
+ *
+ * @return renderable array (the second dropdown)
+ */
+function taxonomy_menu_block_ajax_callback($form, $form_state) {
+  return $form['active_trail']['ct']['term_reference_field'];
+}
+
+/**
+ * Function to populate the first dropdown. 
+ * @return array of options
+ */
+function taxonomy_menu_block_ct_dropdown_options() {
+  $types = node_type_get_types();
+  foreach ($types as $type) {
+    $node_types[$type->type] = $type->name;
+  }
+  if (isset($node_types))
+    return $node_types;
+  else 
+    return array();
+}
+
+/**
+ * Function to populate the second dropdown. 
+ * @param key. This will determine which set of options is returned.
+ *
+ * @return array of options
+ */
+function taxonomy_menu_block_term_ref_options($key = NULL) {
+  if ($key != NULL) {
+    $fields = field_info_instances('node', $key);
+    foreach ($fields as $field) {
+      $info = field_info_field($field['field_name']);
+      if ($info['type'] == 'taxonomy_term_reference' || ($info['type'] == 'entityreference' && $info['settings']['target_type'] == 'taxonomy_term'))
+        $node_fields[$key][$field['field_name']] = $field['label'];
+    }
+    return $node_fields[$key];
+  } else {
+    return array();
+  }
 }
