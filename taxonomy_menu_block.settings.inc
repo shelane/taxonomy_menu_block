@@ -103,7 +103,7 @@ function taxonomy_menu_block_form($form, $form_state) {
   $form['node_options']['orphan_terms'] = array(
       '#type' => 'checkbox',
       '#title' => t('Don\'t display terms with no nodes attched'),
-      '#description' => t('Checking this option will leave out the terms that don\'t have any nodes attched to them. DOES NOT WORK YET!'),
+      '#description' => t('Checking this option will leave out the terms that don\'t have any nodes attched to them.'),
       '#default_value' => isset($tmb['orphan_terms']) ? $tmb['orphan_terms'] : '',
   );
   $form['css'] = array(
@@ -283,9 +283,6 @@ function taxonomy_menu_block_form_delete() {
 /**
  * Selects just the second dropdown to be returned for re-rendering
  *
- * Since the controlling logic for populating the form is in the form builder
- * function, all we do here is select the element and return it to be updated.
- *
  * @return renderable array (the second dropdown)
  */
 function taxonomy_menu_block_ajax_callback($form, $form_state) {
@@ -295,7 +292,7 @@ function taxonomy_menu_block_ajax_callback($form, $form_state) {
       '#description' => t('Select a term ref'),
       '#prefix' => '<div id="dropdown_term_reference">',
       '#suffix' => '</div>',
-      '#options' => taxonomy_menu_block_term_ref_options($form_state["input"]["content_type"]),
+      '#options' => taxonomy_menu_block_term_ref_options($form_state['input']['content_type']),
   );
    
   return $form['active_trail']['ct']['term_reference_field'];
@@ -308,7 +305,7 @@ function taxonomy_menu_block_ajax_callback($form, $form_state) {
 function taxonomy_menu_block_ct_dropdown_options() {
   $types = node_type_get_types();
   foreach ($types as $type) {
-    if(count(taxonomy_menu_block_term_ref_options($type->type))>0){
+    if (count(taxonomy_menu_block_term_ref_options($type->type)) > 0){
     $node_types[$type->type] = $type->name;
     }
   }

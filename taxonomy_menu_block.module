@@ -189,7 +189,6 @@ function taxonomy_menu_block_block_info() {
       $blocks[$tmb_delta] = array(
           'info' => t('Taxonomy menu block - ' . $tmb['name']),
           'cache' => DRUPAL_CACHE_PER_PAGE,
-       
       );
     }
     return $blocks;
@@ -331,30 +330,32 @@ function taxonomy_menu_block_build_taxonomy_tree($tmb) {
   $terms = array();
   global $language;
   $data = taxonomy_menu_block_get_tree($tmb['vid'], $language->language, 0, $tmb['depth']);
-  if($tmb['orphan_terms'] == 1){
+
+  // check if we need to leave out orphan terms (terms with no content attached to them)
+  if (!empty($data) && $tmb['orphan_terms'] == 1) {
     foreach ($data as $key => $value) {
       $data_new[$value->tid] = $value;
     }
-    $data=taxonomy_menu_block_filter_empty($data_new);
+    $data = taxonomy_menu_block_filter_empty($data_new);
   }
+  
   // get active trail, if needed & if we have terms
   if (!empty($data) && ($tmb['active_trail'] == 1 || $tmb['active_trail_ct'] == 1)) {
     // check on what kind of page we are
     $page_info = menu_get_item();
-    if ($page_info['path'] == 'node/%') 
+    if ($page_info['path'] == 'node/%')
       $object = $page_info['page_arguments'][0];
-    if ($page_info['path'] == 'taxonomy/term/%'){ 
-       if(isset($page_info['page_arguments'][0])){
-       $object = $page_info['page_arguments'][0]->tid;
-       }
-       else{
+    if ($page_info['path'] == 'taxonomy/term/%') {
+      if (isset($page_info['page_arguments'][0])) {
+        $object = $page_info['page_arguments'][0]->tid;
+      } else {
         $object = arg(2);
-       }
+      }
     }
     // if we are on node or taxonomy page, get the active trail
     if (isset($object))
       $result['active_trail'] = taxonomy_menu_block_find_active($tmb, $data, $object);
-    else 
+    else
       $result['active_trail'] = NULL;
   } else {
     $result['active_trail'] = NULL;
@@ -363,31 +364,40 @@ function taxonomy_menu_block_build_taxonomy_tree($tmb) {
   foreach ($data as $term) {
     // sometimes i18n returns children already nested, which causes problems as we need a flat array to continue
     // there is probably a better way to fix this
-    if (isset($term->children))
+    if (isset($term->children)) {
       unset($term->children);
-
-    if ($term->depth >= $tmb['starting_level'])
+    }
+    
+    if ($term->depth >= $tmb['starting_level']) {
       $terms[$term->tid] = $term;
+    }
   }
   $result['terms'] = taxonomy_menu_block_nest_taxonomy_terms($terms);
 
   return $result;
 }
- function taxonomy_menu_block_filter_empty($data){
 
-     $keep=array();
-     foreach ($data as $key => $value) {
-       if(taxonomy_select_nodes($value->tid)){
-       $keep= array_merge($keep,taxonomy_menu_block_get_trail($data,$value));
-       }
-     }
-     $keep=array_flip(array_unique($keep));
-     foreach ($data as $key => $value) {
-       if(!isset($keep[$value->tid])){
-        unset($data[$key]);
-       }
-     }
-    return $data;
+
+/**
+ * Function to filter out orphaned terms
+ * @param type $data
+ * @return type 
+ */
+function taxonomy_menu_block_filter_empty($data) {
+
+  $keep = array();
+  foreach ($data as $key => $value) {
+    if (taxonomy_select_nodes($value->tid)) {
+      $keep = array_merge($keep, taxonomy_menu_block_get_trail($data, $value));
+    }
+  }
+  $keep = array_flip(array_unique($keep));
+  foreach ($data as $key => $value) {
+    if (!isset($keep[$value->tid])) {
+      unset($data[$key]);
+    }
+  }
+  return $data;
 }
 
 /**
@@ -470,7 +480,7 @@ function taxonomy_menu_block_find_active($tmb, $data, $object) {
       //check for entity reference
       if (isset($term_ref['und'][0]['target_id']))
         $reference = $term_ref['und'][0]['target_id'];
-      
+
       // check if term reference field is actually filled in
       if (isset($reference)) {
         foreach ($data as $value) {
