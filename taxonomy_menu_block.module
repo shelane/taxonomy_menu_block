@@ -188,7 +188,8 @@ function taxonomy_menu_block_block_info() {
     foreach ($tmb_array as $tmb_delta => $tmb) {
       $blocks[$tmb_delta] = array(
           'info' => t('Taxonomy menu block - ' . $tmb['name']),
-          'cache' => DRUPAL_NO_CACHE,
+          'cache' => DRUPAL_CACHE_PER_PAGE,
+       
       );
     }
     return $blocks;
@@ -327,20 +328,29 @@ function taxonomy_menu_block_generate_menu($tmb, $result) {
  *
  */
 function taxonomy_menu_block_build_taxonomy_tree($tmb) {
-
   $terms = array();
   global $language;
   $data = taxonomy_menu_block_get_tree($tmb['vid'], $language->language, 0, $tmb['depth']);
-  
+  if($tmb['orphan_terms'] == 1){
+    foreach ($data as $key => $value) {
+      $data_new[$value->tid] = $value;
+    }
+    $data=taxonomy_menu_block_filter_empty($data_new);
+  }
   // get active trail, if needed & if we have terms
   if (!empty($data) && ($tmb['active_trail'] == 1 || $tmb['active_trail_ct'] == 1)) {
     // check on what kind of page we are
     $page_info = menu_get_item();
-    
     if ($page_info['path'] == 'node/%') 
       $object = $page_info['page_arguments'][0];
-    if ($page_info['path'] == 'taxonomy/term/%') 
-      $object = $page_info['page_arguments'][0]->tid;
+    if ($page_info['path'] == 'taxonomy/term/%'){ 
+       if(isset($page_info['page_arguments'][0])){
+       $object = $page_info['page_arguments'][0]->tid;
+       }
+       else{
+        $object = arg(2);
+       }
+    }
     // if we are on node or taxonomy page, get the active trail
     if (isset($object))
       $result['active_trail'] = taxonomy_menu_block_find_active($tmb, $data, $object);
@@ -362,6 +372,22 @@ function taxonomy_menu_block_build_taxonomy_tree($tmb) {
   $result['terms'] = taxonomy_menu_block_nest_taxonomy_terms($terms);
 
   return $result;
+}
+ function taxonomy_menu_block_filter_empty($data){
+
+     $keep=array();
+     foreach ($data as $key => $value) {
+       if(taxonomy_select_nodes($value->tid)){
+       $keep= array_merge($keep,taxonomy_menu_block_get_trail($data,$value));
+       }
+     }
+     $keep=array_flip(array_unique($keep));
+     foreach ($data as $key => $value) {
+       if(!isset($keep[$value->tid])){
+        unset($data[$key]);
+       }
+     }
+    return $data;
 }
 
 /**
@@ -433,7 +459,6 @@ function taxonomy_menu_block_count_nodes_term($tid) {
  * @global type $language
  */
 function taxonomy_menu_block_find_active($tmb, $data, $object) {
-
   // find active item
   // for node pages
   if (isset($object->nid)) {

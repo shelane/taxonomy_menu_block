@@ -289,6 +289,15 @@ function taxonomy_menu_block_form_delete() {
  * @return renderable array (the second dropdown)
  */
 function taxonomy_menu_block_ajax_callback($form, $form_state) {
+   $form['active_trail']['ct']['term_reference_field'] = array(
+      '#type' => 'select',
+      '#title' => t('Select a term reference field'),
+      '#description' => t('Select a term ref'),
+      '#prefix' => '<div id="dropdown_term_reference">',
+      '#suffix' => '</div>',
+      '#options' => taxonomy_menu_block_term_ref_options($form_state["input"]["content_type"]),
+  );
+   
   return $form['active_trail']['ct']['term_reference_field'];
 }
 
@@ -299,7 +308,9 @@ function taxonomy_menu_block_ajax_callback($form, $form_state) {
 function taxonomy_menu_block_ct_dropdown_options() {
   $types = node_type_get_types();
   foreach ($types as $type) {
+    if(count(taxonomy_menu_block_term_ref_options($type->type))>0){
     $node_types[$type->type] = $type->name;
+    }
   }
   if (isset($node_types))
     return $node_types;
@@ -318,10 +329,16 @@ function taxonomy_menu_block_term_ref_options($key = NULL) {
     $fields = field_info_instances('node', $key);
     foreach ($fields as $field) {
       $info = field_info_field($field['field_name']);
-      if ($info['type'] == 'taxonomy_term_reference' || ($info['type'] == 'entityreference' && $info['settings']['target_type'] == 'taxonomy_term'))
+      if ($info['type'] == 'taxonomy_term_reference' || ($info['type'] == 'entityreference' && $info['settings']['target_type'] == 'taxonomy_term')){
         $node_fields[$key][$field['field_name']] = $field['label'];
+      }
     }
-    return $node_fields[$key];
+    if (!empty($node_fields)) {
+      return $node_fields[$key];
+    } else {
+      return array();
+    }
+    
   } else {
     return array();
   }
