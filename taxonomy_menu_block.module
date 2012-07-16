@@ -184,6 +184,7 @@ function taxonomy_menu_block_block_info() {
   $tmb_array = variable_get('taxonomy_menu_block', $default = NULL);
   $tmb_array = unserialize($tmb_array);
 
+  $blocks = array();
   if (!empty($tmb_array)) {
     foreach ($tmb_array as $tmb_delta => $tmb) {
       $blocks[$tmb_delta] = array(
@@ -191,8 +192,8 @@ function taxonomy_menu_block_block_info() {
           'cache' => DRUPAL_CACHE_PER_PAGE,
       );
     }
-    return $blocks;
   }
+  return $blocks;
 }
 
 /**
