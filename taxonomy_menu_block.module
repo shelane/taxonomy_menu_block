@@ -61,11 +61,12 @@ function taxonomy_menu_block_menu() {
  * Validation function for our taxonomy_menu_block_form form
  */
 function taxonomy_menu_block_form_validate($form, &$form_state) {
-  // check if we have valid values
-  if ($form_state['values']['depth'] == '0' || (!empty($form_state['values']['depth']) && !ctype_digit($form_state['values']['depth'])))
+  if ($form_state['values']['depth'] == '0' || (!empty($form_state['values']['depth']) && !ctype_digit($form_state['values']['depth']))) {
     form_set_error('depth', t('Depth must be a positive numeric value'));
-  if ($form_state['values']['level_as_text'] == '0' || (!empty($form_state['values']['level_as_text']) && !ctype_digit($form_state['values']['level_as_text'])))
+  }
+  if ($form_state['values']['level_as_text'] == '0' || (!empty($form_state['values']['level_as_text']) && !ctype_digit($form_state['values']['level_as_text']))) {
     form_set_error('level_as_text', t('Text level must be a positive numeric value'));
+  }
 
   // check if our starting level is valid
   if ($form_state['values']['starting_level'] == '0' || (!empty($form_state['values']['starting_level']) && !ctype_digit($form_state['values']['starting_level']))) {
@@ -80,20 +81,34 @@ function taxonomy_menu_block_form_validate($form, &$form_state) {
       if ($term->depth > $total_depth)
         $total_depth = $term->depth;
     }
-    if ($form_state['values']['starting_level'] > $total_depth)
+    // add one to comply with logic that we add one to our levels as to not confuse our user
+    $total_depth = $total_depth + 1;
+    if ($form_state['values']['starting_level'] > $total_depth) {
       form_set_error('starting_level', t('Your starting level cannot be deeper than the maximum depth of your taxonomy'));
+    }
   }
 
   // check if depth is higher than starting level
-  if (!empty($form_state['values']['depth']) && ($form_state['values']['depth'] < $form_state['values']['starting_level']))
+  if (!empty($form_state['values']['depth']) && ($form_state['values']['depth'] < $form_state['values']['starting_level'])) {
     form_set_error('depth', t('Depth must always be higher than starting level'));
+  }
 
   // check css classes field
   if (!empty($form_state['values']['extra_classes'])) {
     $allowed = "#[^a-z0-9\s-_]#i";
     preg_match($allowed, $form_state['values']['extra_classes'], $matches);
-    if (!empty($matches))
+    if (!empty($matches)) {
       form_set_error('extra_classes', t('Extra CSS classes can only contain letters, numbers, underscores and spaces'));
+    }
+  }
+
+  if ($form_state['values']['active_trail_ct'] == 1) {
+    // check if the selected term ref field actually references our chosen vocabulary
+    $term_ref_field = field_info_field($form_state['values']['term_reference_field']);
+    $vocab = taxonomy_vocabulary_load($form_state['values']['vid']);
+    if ((isset($term_ref_field['settings']['allowed_values'][0]['vocabulary']) && $term_ref_field['settings']['allowed_values'][0]['vocabulary'] != $vocab->machine_name) || (isset($term_ref_field['settings']['handler_settings']['target_bundles']) && key($term_ref_field['settings']['handler_settings']['target_bundles']) != $vocab->machine_name)) {
+      form_set_error('term_reference_field', t('Your chosen term reference field does not match your chosen vocabulary'));
+    }
   }
 }
 
@@ -112,7 +127,7 @@ function taxonomy_menu_block_form_submit($form, &$form_state) {
   $tmb['node_count'] = $form_state['values']['node_count'];
   $tmb['orphan_terms'] = $form_state['values']['orphan_terms'];
   $tmb['classes'] = $form_state['values']['classes'];
-  $tmb['extra_classes'] = $form_state['values']['extra_classes'];
+  $tmb['extra_classes'] = !empty($form_state['values']['extra_classes']) ? $form_state['values']['extra_classes'] : NULL;
   $tmb['active_trail'] = $form_state['values']['active_trail'];
   $tmb['active_trail_ct'] = $form_state['values']['active_trail_ct'];
   if ($tmb['active_trail_ct'] == 1) {
@@ -132,8 +147,9 @@ function taxonomy_menu_block_form_submit($form, &$form_state) {
     // make a unique machine name
     // this can probably be done in a more efficient way
     $delta = preg_replace('/[^a-zA-Z0-9]/', '_', strtolower($form_state['values']['name']));
-    if (!empty($tmb_array) && (array_key_exists($delta, $tmb_array)))
+    if (!empty($tmb_array) && (array_key_exists($delta, $tmb_array))) {
       $delta = $delta . '_';
+    }
     $tmb_array[$delta] = $tmb;
     $msg = t('New taxonomy menu block <i>' . $tmb['name'] . '</i> added');
   }
@@ -279,20 +295,21 @@ function theme_taxonomy_menu_block($variables) {
  * @return type
  */
 function taxonomy_menu_block_generate_menu($tmb, $result) {
-
   $tree = $result['terms'];
   $active_trail = $result['active_trail'];
 
   foreach ($tree as $tid => $term) {
     $item = array();
-
     // add css classes
-    if ($tmb['classes'] == 1)
+    if ($tmb['classes'] == 1) {
       $item['class'][] = 'level-' . ($term->depth + 1);
-    if (isset($active_trail) && in_array($tid, $active_trail))
+    }
+    if (isset($active_trail) && in_array($tid, $active_trail)) {
       $item['class'][] = 'active-trail';
-    if (isset($active_trail) && $tid == $active_trail[0])
+    }
+    if (isset($active_trail) && $tid == $active_trail[0]) {
       $item['class'][] = 'active';
+    }
     if (!empty($tmb['extra_classes'])) {
       $classes = explode(' ', $tmb['extra_classes']);
       $item['class'] = array_merge($item['class'], $classes);
@@ -303,10 +320,11 @@ function taxonomy_menu_block_generate_menu($tmb, $result) {
       $title .= t(' (@count)', array('@count' => taxonomy_menu_block_count_nodes_term($term->tid)));
     }
 
-    if ($tmb['level_as_text'] == '' || ($tmb['level_as_text'] != '' && $tmb['level_as_text'] != $term->depth))
+    if ($tmb['level_as_text'] === NULL || ($tmb['level_as_text'] !== NULL && $tmb['level_as_text'] != $term->depth)) {
       $item['data'] = l($title, 'taxonomy/term/' . $term->tid);
-    else
+    } else {
       $item['data'] = $title;
+    }
 
     if (isset($term->children)) {
       $result['terms'] = $term->children;
@@ -339,13 +357,14 @@ function taxonomy_menu_block_build_taxonomy_tree($tmb) {
     }
     $data = taxonomy_menu_block_filter_empty($data_new);
   }
-  
+
   // get active trail, if needed & if we have terms
   if (!empty($data) && ($tmb['active_trail'] == 1 || $tmb['active_trail_ct'] == 1)) {
     // check on what kind of page we are
     $page_info = menu_get_item();
-    if ($page_info['path'] == 'node/%')
+    if ($page_info['path'] == 'node/%') {
       $object = $page_info['page_arguments'][0];
+    }
     if ($page_info['path'] == 'taxonomy/term/%') {
       if (isset($page_info['page_arguments'][0])) {
         $object = $page_info['page_arguments'][0]->tid;
@@ -354,10 +373,11 @@ function taxonomy_menu_block_build_taxonomy_tree($tmb) {
       }
     }
     // if we are on node or taxonomy page, get the active trail
-    if (isset($object))
+    if (isset($object)) {
       $result['active_trail'] = taxonomy_menu_block_find_active($tmb, $data, $object);
-    else
+    } else {
       $result['active_trail'] = NULL;
+    }
   } else {
     $result['active_trail'] = NULL;
   }
@@ -368,7 +388,6 @@ function taxonomy_menu_block_build_taxonomy_tree($tmb) {
     if (isset($term->children)) {
       unset($term->children);
     }
-    
     if ($term->depth >= $tmb['starting_level']) {
       $terms[$term->tid] = $term;
     }
@@ -378,11 +397,10 @@ function taxonomy_menu_block_build_taxonomy_tree($tmb) {
   return $result;
 }
 
-
 /**
  * Function to filter out orphaned terms
  * @param type $data
- * @return type 
+ * @return type
  */
 function taxonomy_menu_block_filter_empty($data) {
 
@@ -473,28 +491,32 @@ function taxonomy_menu_block_find_active($tmb, $data, $object) {
   // find active item
   // for node pages
   if (isset($object->nid)) {
-    if ($object->type == $tmb['content_type']) {
+    if ($object->type == $tmb['content_type'] && isset($object->$tmb['term_reference_field'])) {
       $term_ref = $object->$tmb['term_reference_field'];
       // check for taxonomy term ref
-      if (isset($term_ref['und'][0]['tid']))
+      if (isset($term_ref['und'][0]['tid'])) {
         $reference = $term_ref['und'][0]['tid'];
+      }
       //check for entity reference
-      if (isset($term_ref['und'][0]['target_id']))
+      if (isset($term_ref['und'][0]['target_id'])) {
         $reference = $term_ref['und'][0]['target_id'];
+      }
 
       // check if term reference field is actually filled in
       if (isset($reference)) {
         foreach ($data as $value) {
-          if ($reference == $value->tid)
+          if ($reference == $value->tid) {
             $active = $value;
+          }
         }
       }
     }
     // for taxonomy pages
   } else {
     foreach ($data as $value) {
-      if ($object == $value->tid)
+      if ($object == $value->tid) {
         $active = $value;
+      }
     }
   }
 

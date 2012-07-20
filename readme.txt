@@ -1,22 +1,11 @@
-The aim taxonomy menu
+Taxonomy Menu Block - readme.txt 17/07/2012
+-------------------
 
-Functionaliteiten:
+This module will enable you to display all your existing vocabularies in blocks. Enable the module and go to admin/config/development/taxonomy_menu_block to start adding your blocks.
+You can add multiple blocks for each vocabulary and configure each one differently, all available settings are displayed on the add/edit page. 
 
-Module gebouwd met het oog op het eenvoudig en efficiënt genereren van een meertalige taxonomy menu zonder caching. Er is ook een active state en active-trail voorzien zodanig dat op een eenvoudige manier een accordeon menu kan gemaakt worden. 
+This module works together with i18n. 
 
+Do note that enabling the node-related options will cause a heavier server load, as it requires the module to run more database queries.
 
-Installatie:
-
-Na enablen van module: 
-1) ga naar admin/config/development/the_aim_taxonomy_menu
-2) selecteer de gewenste vocabulary
-3) ga naar admin/structure/block zet The Aim Taxonomy menu op de gewenste plaats
-
-
-Troubleshooting:
-
-De module gaat ervan uit dat de taxonomy meertalig is ingesteld. Bijgevolg zal hij enkel werken wanneer de translation mode van je taxonomy op: 'Translate. Different terms will be allowed for each language and they can be translated.' staat. Ook mogen(zullen niet getoond worden) terms niet language neutral zijn. 
-
-Todo:
-- Meerdere taxonomy menu's mogelijk maken
-- i18n_taxonomy_get_tree functie wordt twee maal opgeroepen ( performance : dit zou normaal met caching moeten opgevangen worden dus geen dringende issue )
+To take over the theming of your blocks, override the 'theme_taxonomy_menu_block' function. 
