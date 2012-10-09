@@ -432,6 +432,9 @@ function taxonomy_menu_block_get_tree($vid, $lang, $parent = 0, $depth = NULL) {
     if ((isset($data)) && (count($data) == 0)) {
       $lang = 'und';
       $data = i18n_taxonomy_get_tree($vid, $lang, $parent, $depth);
+      // if terms are set to "localize" the above function doesn't return any results
+      // so we double check using the function below
+      $data = i18n_taxonomy_localize_terms($data);
     }
   } else {
     $data = taxonomy_get_tree($vid, $parent, $depth);
