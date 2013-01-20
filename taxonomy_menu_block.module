@@ -1,553 +1,419 @@
 <?php
 
-/* * ************************
- * FORMS & FORM VALIDATION
- */
+// Off-load the following infrequently called hooks to another file.
+function taxonomy_menu_block_form_alter(&$form, &$form_state, $form_id) {
+  module_load_include('inc', 'taxonomy_menu_block', 'taxonomy_menu_block.settings');
+  return _taxonomy_menu_block_form_alter($form, $form_state, $form_id);
+}
+
+function taxonomy_menu_block_block_info() {
+  module_load_include('inc', 'taxonomy_menu_block', 'taxonomy_menu_block.settings');
+  return _taxonomy_menu_block_block_info();
+}
+
+function taxonomy_menu_block_edit_block($form, &$form_state) {
+  module_load_include('inc', 'taxonomy_menu_block', 'taxonomy_menu_block.settings');
+  return _taxonomy_menu_block_edit_block($form, $form_state);
+}
 
 /**
- * Implementation of hook_menu();
+ * Implements hook_menu().
  */
 function taxonomy_menu_block_menu() {
-  $items = array();
-  // our page where we list our existing blocks
-  $items['admin/config/development/taxonomy_menu_block'] = array(
-      'title' => 'Taxonomy menu block',
-      'description' => 'Displays taxonomies as blocks',
-      'page callback' => 'taxonomy_menu_block_list',
-      'type' => MENU_NORMAL_ITEM,
-      'access arguments' => array('administer taxonomy menu block'),
-      'file' => 'taxonomy_menu_block.settings.inc',
-  );
-  // page where we add new blocks
-  $items['admin/config/development/taxonomy_menu_block/add'] = array(
-      'title' => 'Add a taxonomy menu block',
+  // Add block form
+  $items['admin/structure/block/add-taxonomy-menu-block'] = array(
+      'title' => 'Add taxonomy menu block',
+      'description' => 'Add a new taxonomy menu block.',
       'page callback' => 'drupal_get_form',
-      'page arguments' => array('taxonomy_menu_block_form'),
-      'type' => MENU_CALLBACK,
-      'access arguments' => array('administer taxonomy menu block'),
+      'page arguments' => array('taxonomy_menu_block_add_block_form'),
+      'access arguments' => array('administer blocks'),
+      'type' => MENU_LOCAL_ACTION,
       'file' => 'taxonomy_menu_block.settings.inc',
   );
-  // page where we edit blocks
-  $items['admin/config/development/taxonomy_menu_block/edit/%'] = array(
-      'title' => 'Edit a taxonomy menu block',
-      'page callback' => 'taxonomy_menu_block_form_edit',
-      'page arguments' => array(5),
-      'type' => MENU_CALLBACK,
-      'access arguments' => array('administer taxonomy menu block'),
-      'file' => 'taxonomy_menu_block.settings.inc',
-  );
-  // page where we clone blocks
-  $items['admin/config/development/taxonomy_menu_block/clone/%'] = array(
-      'title' => 'Clone a taxonomy menu block',
-      'page callback' => 'taxonomy_menu_block_form_clone',
-      'page arguments' => array(5),
-      'type' => MENU_CALLBACK,
-      'access arguments' => array('administer taxonomy menu block'),
-      'file' => 'taxonomy_menu_block.settings.inc',
-  );
-  // page where we delete blocks
-  $items['admin/config/development/taxonomy_menu_block/delete/%'] = array(
-      'title' => 'Delete a taxonomy menu block',
-      'page callback' => 'drupal_get_form',
-      'page arguments' => array('taxonomy_menu_block_form_delete'),
-      'type' => MENU_CALLBACK,
-      'access arguments' => array('administer taxonomy menu block'),
-      'file' => 'taxonomy_menu_block.settings.inc',
-  );
-  return $items;
-}
 
-/**
- * Validation function for our taxonomy_menu_block_form form
- */
-function taxonomy_menu_block_form_validate($form, &$form_state) {
-  if ($form_state['values']['depth'] == '0' || (!empty($form_state['values']['depth']) && !ctype_digit($form_state['values']['depth']))) {
-    form_set_error('depth', t('Depth must be a positive numeric value'));
-  }
-  if ($form_state['values']['level_as_text'] == '0' || (!empty($form_state['values']['level_as_text']) && !ctype_digit($form_state['values']['level_as_text']))) {
-    form_set_error('level_as_text', t('Text level must be a positive numeric value'));
-  }
-
-  // check if our starting level is valid
-  if ($form_state['values']['starting_level'] == '0' || (!empty($form_state['values']['starting_level']) && !ctype_digit($form_state['values']['starting_level']))) {
-    form_set_error('starting_level', t('Starting level must be a positive numeric value'));
-  } else {
-    // check how deep our tree goes, user cannot enter a value higher than this
-    global $language;
-    $lang = $language->language;
-    $tree = taxonomy_menu_block_get_tree($form_state['values']['vid'], $lang);
-    $total_depth = 0;
-    foreach ($tree as $term) {
-      if ($term->depth > $total_depth)
-        $total_depth = $term->depth;
-    }
-    // add one to comply with logic that we add one to our levels as to not confuse our user
-    $total_depth = $total_depth + 1;
-    if ($form_state['values']['starting_level'] > $total_depth) {
-      form_set_error('starting_level', t('Your starting level cannot be deeper than the maximum depth of your taxonomy'));
-    }
-  }
-
-  // check if depth is higher than starting level
-  if (!empty($form_state['values']['depth']) && ($form_state['values']['depth'] < $form_state['values']['starting_level'])) {
-    form_set_error('depth', t('Depth must always be higher than starting level'));
-  }
-
-  // check css classes field
-  if (!empty($form_state['values']['extra_classes'])) {
-    $allowed = "#[^a-z0-9\s-_]#i";
-    preg_match($allowed, $form_state['values']['extra_classes'], $matches);
-    if (!empty($matches)) {
-      form_set_error('extra_classes', t('Extra CSS classes can only contain letters, numbers, underscores and spaces'));
-    }
-  }
-
-  if ($form_state['values']['active_trail_ct'] == 1) {
-    // check if the selected term ref field actually references our chosen vocabulary
-    $term_ref_field = field_info_field($form_state['values']['term_reference_field']);
-    $vocab = taxonomy_vocabulary_load($form_state['values']['vid']);
-    if ((isset($term_ref_field['settings']['allowed_values'][0]['vocabulary']) && $term_ref_field['settings']['allowed_values'][0]['vocabulary'] != $vocab->machine_name) || (isset($term_ref_field['settings']['handler_settings']['target_bundles']) && key($term_ref_field['settings']['handler_settings']['target_bundles']) != $vocab->machine_name)) {
-      form_set_error('term_reference_field', t('Your chosen term reference field does not match your chosen vocabulary'));
-    }
-  }
-}
-
-/**
- * Submit function for our taxonomy_menu_block_form form
- */
-function taxonomy_menu_block_form_submit($form, &$form_state) {
-  // add our block values to a new array
-  $tmb['vid'] = $form_state['values']['vid'];
-  $tmb['name'] = $form_state['values']['name'];
-  $tmb['depth'] = !empty($form_state['values']['depth']) ? $form_state['values']['depth'] : NULL;
-  // subtract 1 here and add it again later in the form.
-  // drupal uses 0 as lowest value, we use 1 as lowest value to not confuse our user
-  $tmb['level_as_text'] = !empty($form_state['values']['level_as_text']) ? $form_state['values']['level_as_text'] - 1 : NULL;
-  $tmb['starting_level'] = !empty($form_state['values']['starting_level']) ? $form_state['values']['starting_level'] - 1 : NULL;
-  $tmb['node_count'] = $form_state['values']['node_count'];
-  $tmb['orphan_terms'] = $form_state['values']['orphan_terms'];
-  $tmb['classes'] = $form_state['values']['classes'];
-  $tmb['extra_classes'] = !empty($form_state['values']['extra_classes']) ? $form_state['values']['extra_classes'] : NULL;
-  $tmb['active_trail'] = $form_state['values']['active_trail'];
-  $tmb['active_trail_ct'] = $form_state['values']['active_trail_ct'];
-  if ($tmb['active_trail_ct'] == 1) {
-    $tmb['content_type'] = $form_state['values']['content_type'];
-    $tmb['term_reference_field'] = $form_state['values']['term_reference_field'];
-  } else {
-    $tmb['content_type'] = NULL;
-    $tmb['term_reference_field'] = NULL;
-  }
-
-  // get our taxonomy_menu_block variable, which stores everything in a serialized nested array
-  $tmb_array = variable_get('taxonomy_menu_block', $default = NULL);
-  $tmb_array = unserialize($tmb_array);
-
-  // if we have a NEW block
-  if (empty($form_state['values']['delta'])) {
-    // make a unique machine name
-    // this can probably be done in a more efficient way
-    $delta = preg_replace('/[^a-zA-Z0-9]/', '_', strtolower($form_state['values']['name']));
-    if (!empty($tmb_array) && (array_key_exists($delta, $tmb_array))) {
-      $delta = $delta . '_';
-    }
-    $tmb_array[$delta] = $tmb;
-    $msg = t('New taxonomy menu block <i>' . $tmb['name'] . '</i> added');
-  }
-  // if we have an EXISTING block that needs to be edited
-  else {
-    $tmb_array[$form_state['values']['delta']] = $tmb;
-    $msg = t('Taxonomy menu block <i>' . $tmb['name'] . '</i> edited');
-  }
-
-  // save our taxonomy block variable
-  $tmb_array = serialize($tmb_array);
-  variable_set('taxonomy_menu_block', $tmb_array);
-
-  $form_state['redirect'] = 'admin/config/development/taxonomy_menu_block';
-
-  drupal_get_messages(); // reset other possible messages that might still be displayed
-  drupal_set_message($msg, 'status');
-}
-
-/**
- * Submit function for our taxonomy_menu_block_form_delete form
- */
-function taxonomy_menu_block_form_delete_submit($form, &$form_state) {
-  $tmb_array = variable_get('taxonomy_menu_block', $default = NULL);
-  $tmb_array = unserialize($tmb_array);
-
-  // remember the name for confirmation msg
-  $tmb = $tmb_array[$form_state['values']['delta']]['name'];
-
-  unset($tmb_array[$form_state['values']['delta']]);
-
-  $tmb_array = serialize($tmb_array);
-  variable_set('taxonomy_menu_block', $tmb_array);
-
-  $form_state['redirect'] = 'admin/config/development/taxonomy_menu_block';
-  drupal_set_message(t('Taxonomy menu block <i>' . $tmb . '</i> deleted'), 'status');
-}
-
-/* * ******
- * BLOCKS
- */
-
-/**
- * Implementation of hook_block_info();
- */
-function taxonomy_menu_block_block_info() {
-  // get all our current blocks
-  $tmb_array = variable_get('taxonomy_menu_block', $default = NULL);
-  $tmb_array = unserialize($tmb_array);
-
-  $blocks = array();
-  if (!empty($tmb_array)) {
-    foreach ($tmb_array as $tmb_delta => $tmb) {
-      $blocks[$tmb_delta] = array(
-          'info' => t('Taxonomy menu block - ' . $tmb['name']),
-          'cache' => DRUPAL_CACHE_PER_PAGE,
+  // Display "add taxonomy menu block" link on block overview page
+  $default_theme = variable_get('theme_default', 'bartik');
+  foreach (list_themes() as $key => $theme) {
+    if ($key != $default_theme) {
+      $items['admin/structure/block/list/' . $key . '/add-taxonomy-menu-block'] = array(
+          'title' => 'Add taxonomy menu block',
+          'description' => 'Add a new taxonomy menu block.',
+          'page callback' => 'drupal_get_form',
+          'page arguments' => array('taxonomy_menu_block_add_block_form'),
+          'access arguments' => array('administer blocks'),
+          'type' => MENU_LOCAL_ACTION,
+          'file' => 'taxonomy_menu_block.settings.inc',
       );
     }
   }
-  return $blocks;
-}
 
-/**
- * Implementation of hook_block_view();
- */
-function taxonomy_menu_block_block_view($delta = '') {
-  // get all our current blocks
-  $tmb_array = variable_get('taxonomy_menu_block', $default = NULL);
-  $tmb_array = unserialize($tmb_array);
-
-  if (!empty($tmb_array)) {
-    foreach ($tmb_array as $tmb_delta => $tmb) {
-      if ($delta == $tmb_delta) {
-        $block = array();
-        $block['subject'] = $tmb['name'];
-
-        // build tree & active trail
-        // this will return an array with two entries, one for our (nested) tree and one for our active trail
-        $result = taxonomy_menu_block_build_taxonomy_tree($tmb);
-
-        // if we have results, continue
-        if (!empty($result['terms'])) {
-          $items = taxonomy_menu_block_generate_menu($tmb, $result);
-          $content = theme('taxonomy_menu_block', array('items' => $items));
-          $block['content'] = $content;
-        } else {
-          $block['content'] = t('No terms to display.');
-        }
-
-        return $block;
-      }
-    }
-  }
-}
-
-/* * ****************
- * THEMING & MARKUP
- */
-
-/*
- * Implementation of hook_theme
- */
-
-function taxonomy_menu_block_theme() {
-  return array(
-      'taxonomy_menu_block' => array(
-          'variables' => array('items' => NULL),
-      ),
+  // Delete block
+  $items['admin/structure/block/delete-taxonomy-menu-block'] = array(
+      'title' => 'Delete taxonomy menu block',
+      'page callback' => 'drupal_get_form',
+      'page arguments' => array('taxonomy_menu_block_delete'),
+      'access arguments' => array('administer blocks'),
+      'type' => MENU_CALLBACK,
+      'file' => 'taxonomy_menu_block.settings.inc',
   );
-}
-
-/*
- * function to generate markup for our list
- */
-
-function theme_taxonomy_menu_block($variables) {
-  $items = $variables['items'];
-  $output = '<ul class="tmb">';
-  foreach ($items as $item) {
-    $output .= '<li';
-    // add the classes to the li
-    if (isset($item['class'])) {
-      $output .= ' class="' . implode(' ', $item['class']) . '"';
-    }
-    $output .= '>';
-    $output .= $item['data'];
-    if (isset($item['children'])) {
-      $output .= theme_taxonomy_menu_block(array('items' => $item['children']));
-    }
-    $output .= '</li>';
-  }
-  $output .= '</ul>';
-  return $output;
-}
-
-/**
- * Build our nested array that we will use to pass on to Drupal's theme_list_item function
- * This is where we set all our options
- * @param type $tree
- * @param type $active_trail
- * @param type $node_count
- * @param type $level_as_text
- * @return type
- */
-function taxonomy_menu_block_generate_menu($tmb, $result) {
-  $tree = $result['terms'];
-  $active_trail = $result['active_trail'];
-
-  foreach ($tree as $tid => $term) {
-    $item = array();
-    // add css classes
-    if ($tmb['classes'] == 1) {
-      $item['class'][] = 'level-' . ($term->depth + 1);
-    }
-    if (isset($active_trail) && in_array($tid, $active_trail)) {
-      $item['class'][] = 'active-trail';
-    }
-    if (isset($active_trail) && $tid == $active_trail[0]) {
-      $item['class'][] = 'active';
-    }
-    if (!empty($tmb['extra_classes'])) {
-      $classes = explode(' ', $tmb['extra_classes']);
-      $item['class'] = array_merge($item['class'], $classes);
-    }
-
-    $title = $term->name;
-    if ($tmb['node_count'] == 1) {
-      $title .= t(' (@count)', array('@count' => taxonomy_menu_block_count_nodes_term($term->tid)));
-    }
-
-    if ($tmb['level_as_text'] === NULL || ($tmb['level_as_text'] !== NULL && $tmb['level_as_text'] != $term->depth)) {
-      $item['data'] = l($title, 'taxonomy/term/' . $term->tid);
-    } else {
-      $item['data'] = $title;
-    }
-
-    if (isset($term->children)) {
-      $result['terms'] = $term->children;
-      $item['children'] = taxonomy_menu_block_generate_menu($tmb, $result);
-    }
-
-    $items[] = $item;
-  }
 
   return $items;
 }
 
-/* * ***************
- * FUNCTIONALITIES
- */
-
 /**
- * Generates & returns a nested array of taxonomy terms for the specified vocabulary id;
- *
+ * Implements hook_block_view().
  */
-function taxonomy_menu_block_build_taxonomy_tree($tmb) {
-  $terms = array();
-  global $language;
-  $data = taxonomy_menu_block_get_tree($tmb['vid'], $language->language, 0, $tmb['depth']);
-
-  // check if we need to leave out orphan terms (terms with no content attached to them)
-  if (!empty($data) && $tmb['orphan_terms'] == 1) {
-    foreach ($data as $key => $value) {
-      $data_new[$value->tid] = $value;
-    }
-    $data = taxonomy_menu_block_filter_empty($data_new);
-  }
-
-  // get active trail, if needed & if we have terms
-  if (!empty($data) && ($tmb['active_trail'] == 1 || $tmb['active_trail_ct'] == 1)) {
-    // check on what kind of page we are
-    $page_info = menu_get_item();
-    if ($page_info['path'] == 'node/%') {
-      $object = $page_info['page_arguments'][0];
-    }
-    if ($page_info['path'] == 'taxonomy/term/%') {
-      if (isset($page_info['page_arguments'][0])) {
-        $object = $page_info['page_arguments'][0]->tid;
-      } else {
-        $object = arg(2);
-      }
-    }
-    // if we are on node or taxonomy page, get the active trail
-    if (isset($object)) {
-      $result['active_trail'] = taxonomy_menu_block_find_active($tmb, $data, $object);
-    } else {
-      $result['active_trail'] = NULL;
-    }
-  } else {
-    $result['active_trail'] = NULL;
-  }
-
-  foreach ($data as $term) {
-    // sometimes i18n returns children already nested, which causes problems as we need a flat array to continue
-    // there is probably a better way to fix this
-    if (isset($term->children)) {
-      unset($term->children);
-    }
-    if ($term->depth >= $tmb['starting_level']) {
-      $terms[$term->tid] = $term;
-    }
-  }
-  $result['terms'] = taxonomy_menu_block_nest_taxonomy_terms($terms);
-
-  return $result;
-}
-
-/**
- * Function to filter out orphaned terms
- * @param type $data
- * @return type
- */
-function taxonomy_menu_block_filter_empty($data) {
-
-  $keep = array();
-  foreach ($data as $key => $value) {
-    if (taxonomy_select_nodes($value->tid)) {
-      $keep = array_merge($keep, taxonomy_menu_block_get_trail($data, $value));
-    }
-  }
-  $keep = array_flip(array_unique($keep));
-  foreach ($data as $key => $value) {
-    if (!isset($keep[$value->tid])) {
-      unset($data[$key]);
-    }
-  }
+function taxonomy_menu_block_block_view($delta = '') {
+  $config = taxonomy_menu_block_get_config($delta);
+  $data = taxonomy_menu_block_build($config);
   return $data;
 }
 
 /**
- * Function to generate our taxonomy tree, taking into account i18n
- * @param type $vid
- * @param string $lang
- * @param type $parent
- * @return type
+ * Function to build our tree
+ * @param $config
+ *    array An array of configuration options that specifies how to build the
+ *    taxonomy tree 
+ *    - admin_title: Administrative title to use on the block admin page
+ *    - vid: Taxonomy vocabulary id
+ *    - parent: What kind of tree we will build
+ *        0: Display the whole tree
+ *        1: Fixed parent: display only a branch of tree, parent is given
+ *        2: Dynamic tree: will look at currently viewed page, find an active tid and 
+ *           display the children of that tid
+ *    - parent_fixed: The fixed parent tid in case parent is set to 1
+ *    - parent_dynamic: Determines at what depth we need to find the parent tid in case 
+ *      parent is set to 2
+ *    - depth: Until what depth we need to render our tree.
+ * @return 
+ *    Array that contains one value: content, which is the fully rendered HTML
+ *    of our tree
  */
-function taxonomy_menu_block_get_tree($vid, $lang, $parent = 0, $depth = NULL) {
+function taxonomy_menu_block_build($config) {
+
+  $tree = array();
+  $data['content'] = '';
+  $parent = NULL;
+
+  // Get tree
+  if ($config['parent'] == '1') {
+    $tree = taxonomy_menu_block_get_tree($config['vid'], $config['parent_fixed']);
+    $parent = $config['parent_fixed'];
+  } else {
+    $tree = taxonomy_menu_block_get_tree($config['vid']);
+  }
+
+  // Find active tid
+  $tid = taxonomy_menu_block_find_active_tid($tree, $config['vid']);
+
+  // Let other modules alter the active tid
+  drupal_alter('active_tid', $tid);
+
+  // If we have a Dynamic parent and no active tid, bail out
+  if ($config['parent'] == '2' && !$tid) {
+    return;
+  }
+
+  // Add the active trail
+  $tree = taxonomy_menu_block_add_active_trail($tree, $tid);
+
+  // If we have a Dynamic parent, trim according to option
+  if ($config['parent'] == '2') {
+    // Find parent
+    if ($config['parent_dynamic'] != '0') {
+      // Loop over tree and find the highest item in active trail, taking into account 
+      // our specified depth
+      foreach ($tree as $key => $term) {
+        if ($term['active_trail'] != '0' && $term['depth'] == ($config['parent_dynamic'] - 1)) {
+          $parent = $key;
+        }
+      }
+    } else {
+      $parent = $tid;
+    }
+
+    if ($parent) {
+      // Loop over tree, store all items that have higher depth than parent
+      // First item that has the same depth means new branch of tree
+      $start = FALSE;
+      $branch = array();
+
+      foreach ($tree as $key => $term) {
+        // Stop storing once we hit a term with same depth as $parent
+        if ($term['depth'] <= $tree[$parent]['depth']) {
+          $start = FALSE;
+        }
+        if ($start == TRUE) {
+          $branch[$key] = $term;
+        }
+        // Only start storing from when we hit $parent
+        if ($key == $parent && $start != TRUE) {
+          $start = TRUE;
+        }
+      }
+
+      // An empty array means that we don't have any children for this branch
+      if ($branch) {
+        $tree = $branch;
+      } else {
+        return;
+      }
+    } else {
+      // Since we know we have an active tid, no parent can only mean user didn't configure correctly
+      drupal_set_message(t('Parent level or depth configured incorrectly'), 'error');
+      return;
+    }
+  }
+
+  // Depth trim. Always do this last as to not lose the active trail
+  if ($config['depth'] != '0') {
+    if ($config['parent'] != '1') {
+      // Substract one of our max depth because Drupal considers 0 to be the root level
+      $max_depth = $config['depth'] - 1;
+    } else {
+      // Add one because taxonomy_get_tree() returns a different depth when a fixed parent is passed along
+      $max_depth = $config['depth'] + 1;
+    }
+
+    $temp_tree = array();
+    foreach ($tree as $tid => $term) {
+      if ($term['depth'] <= $max_depth) {
+        $temp_tree[$tid] = $term;
+      }
+    }
+    if ($temp_tree) {
+      $tree = $temp_tree;
+    } else {
+      return;
+    }
+  }
+
+  // Last check. If we for some reason still don't have a built tree, bail
+  if (empty($tree)) {
+    return;
+  }
+
+  // Let other modules alter the taxonomy tree data
+  drupal_alter('taxonomy_tree', $tree);
+
+  // Nest tree
+  // If we have a parent, pass along parent
+  if ($parent) {
+    $tree = taxonomy_menu_block_nest_tree($tree, $parent);
+  } else {
+    $tree = taxonomy_menu_block_nest_tree($tree);
+  }
+
+  // Theme tree
+  $data['content'] = theme_taxonomy_menu_block($tree);
+
+  return $data;
+}
+
+/**
+ * Returns the configuration for the requested block delta.
+ *
+ * @param $delta
+ *   string The delta that uniquely identifies the block in the block system. If
+ *   not specified, the default configuration will be returned.
+ * @return
+ *   array An associated array of configuration options.
+ */
+function taxonomy_menu_block_get_config($delta = NULL) {
+  // Initialize
+  $config = array(
+      'delta' => $delta,
+      'admin_title' => '',
+      'vid' => 1,
+      'parent' => 0,
+      'parent_fixed' => 0,
+      'parent_dynamic' => 1,
+      'depth' => 0,
+  );
+
+  // Get the block configuration options.
+  if ($delta) {
+    $taxonomy_menu_block = variable_get("taxonomy_menu_block_{$delta}", array());
+    $config = unserialize($taxonomy_menu_block);
+  }
+
+  return $config;
+}
+
+/**
+ * Generate taxonomy tree, taking into account i18n 
+ */
+function taxonomy_menu_block_get_tree($vid, $parent_fixed = 0) {
+
+  $data = array();
+
   if (module_exists('i18n_taxonomy')) {
-    $data = i18n_taxonomy_get_tree($vid, $lang, $parent, $depth);
+    // Todo: check if fixed parent tid has sisters in other language?
+    global $language;
+    $lang = $language->language;
+
+    $data = i18n_taxonomy_get_tree($vid, $lang, $parent_fixed);
+
     if ((isset($data)) && (count($data) == 0)) {
       $lang = 'und';
-      $data = i18n_taxonomy_get_tree($vid, $lang, $parent, $depth);
-      // if terms are set to "localize" the above function doesn't return any results
-      // so we double check using the function below
-      $data = i18n_taxonomy_localize_terms($data);
+      $data = i18n_taxonomy_localize_terms(i18n_taxonomy_get_tree($vid, $lang, $parent_fixed));
     }
   } else {
-    $data = taxonomy_get_tree($vid, $parent, $depth);
+    $data = taxonomy_get_tree($vid, $parent_fixed);
   }
 
-  return $data;
-}
+  // Restructure tree with only the info we need
+  $tree = array();
 
-/**
- * Looks for each term's parent term in the given tree and assigns
- * the child to the parent.
- * @return
- * @param object $terms
- * @param object $parent
- */
-function taxonomy_menu_block_nest_taxonomy_terms($terms) {
-
-  foreach ($terms as $term) {
-    $parent_tid = isset($term->parents[0]) ? $term->parents[0] : 0;
-
-    // if terms have a parent id that is not 0 & is in the array
-    if ($parent_tid && isset($terms[$parent_tid])) {
-      $terms[$parent_tid]->children[$term->tid] = $term;
-      // remember terms that get nested and that we must delete
-      $to_delete[] = $term->tid;
+  foreach ($data as $term) {
+    // Localized terms that aren't translated don't have a depth or parents defined.
+    // We leave those out here
+    if (isset($term->depth)) {
+      $branch['name'] = $term->name;
+      $branch['depth'] = $term->depth;
+      $branch['parents'] = $term->parents;
+      $branch['active_trail'] = '0';
+      $tree[$term->tid] = $branch;
     }
   }
 
-  // loop through our to_delete terms
-  if (isset($to_delete)) {
-    foreach ($to_delete as $delete) {
-      unset($terms[$delete]);
+  return $tree;
+}
+
+/**
+ * Get currently active tid 
+ */
+function taxonomy_menu_block_find_active_tid($tree, $vid) {
+  $active = NULL;
+
+  // Check on what kind of page we are
+  $current = menu_get_item();
+
+  // If we're on a NODE page
+  if ($current['path'] == 'node/%') {
+    $term_reference_fields = array();
+
+    // Load all defined fields
+    $fields = field_info_fields();
+
+    // Loop over them and pull out the taxonomy term fields that are attached to nodes
+    foreach ($fields as $key => $field) {
+      if ($field['type'] == 'taxonomy_term_reference' && $field['deleted'] == '0' && isset($field['bundles']['node'])) {
+        foreach ($field['bundles']['node'] as $bundle) {
+          $term_reference_fields[$bundle][] = $key;
+        }
+      }
     }
-  }
 
-  return $terms;
-}
+    $node = $current['page_arguments'][0];
 
-/**
- * Counts the number of nodes assigned to a term.
- * @return integer $count - number of nodes
- * @param integer $tid - term id
- */
-function taxonomy_menu_block_count_nodes_term($tid) {
-  return db_select('taxonomy_index', 'ti')
-                  ->condition('tid', (int) $tid)
-                  ->countQuery()
-                  ->execute()
-                  ->fetchField();
-}
-
-/**
- * Function to find our active trail
- * @global type $language
- */
-function taxonomy_menu_block_find_active($tmb, $data, $object) {
-  // find active item
-  // for node pages
-  if (isset($object->nid)) {
-    if ($object->type == $tmb['content_type'] && isset($object->$tmb['term_reference_field'])) {
-      $term_ref = $object->$tmb['term_reference_field'];
-      // check for taxonomy term ref
-      if (isset($term_ref['und'][0]['tid'])) {
-        $reference = $term_ref['und'][0]['tid'];
-      }
-      //check for entity reference
-      if (isset($term_ref['und'][0]['target_id'])) {
-        $reference = $term_ref['und'][0]['target_id'];
-      }
-
-      // check if term reference field is actually filled in
-      if (isset($reference)) {
-        foreach ($data as $value) {
-          if ($reference == $value->tid) {
-            $active = $value;
+    // Check if the current node has a term reference field
+    if (isset($term_reference_fields[$node->type])) {
+      foreach ($term_reference_fields[$node->type] as $term_reference_field) {
+        $term_reference_field = $node->$term_reference_field;
+        if (!empty($term_reference_field['und'])) {
+          // Only the first value will be selected, also for fields that allow
+          // multiple values
+          // It doesn't make sense to have more than one active trail/items in a menu
+          $tid = $term_reference_field['und'][0]['tid'];
+          // Check if the term actually belongs to the vocabulary we need to display
+          // (node can have more than one term reference field)
+          if (isset($tree[$tid])) {
+            $active = $tid;
           }
         }
       }
     }
-    // for taxonomy pages
-  } else {
-    foreach ($data as $value) {
-      if ($object == $value->tid) {
-        $active = $value;
-      }
+  }
+
+  // If we're on a TAXONOMY page
+  if ($current['path'] == 'taxonomy/term/%') {
+    $tid = end($current['original_map']);
+    // Check if the current tid is in our tree
+    if (isset($tid) && isset($tree[$tid])) {
+      $active = $tid;
     }
   }
 
-  if (isset($active)) {
-    // structure data array
-    foreach ($data as $key => $value) {
-      $data_new[$value->tid] = $value;
-    }
-    $active_trail = taxonomy_menu_block_get_trail($data_new, $active);
-  } else {
-    $active_trail = NULL;
-  }
-
-  return $active_trail;
+  return $active;
 }
 
 /**
- * Function to find possible active items that are higher up in the tree
- * @param type $data
- * @param type $active
- * @return type
+ * Add active trail 
+ * Options:
+ *  0 = not active. This has already been set as default in taxonomy_menu_block_get_tree()
+ *  1 = active trail
+ *  2 = active
  */
-function taxonomy_menu_block_get_trail($data, $active) {
-  $active_trail[] = $active->tid;
-  $parent = $active->parents[0];
-  for ($i = 0; $i < $active->depth; $i++) {
-    $active_trail[] = $data[$parent]->tid;
-    $parent = $data[$parent]->parents[0];
+function taxonomy_menu_block_add_active_trail($tree, $tid = NULL) {
+
+  // If we have an active page, add the trail
+  if ($tid) {
+    // Set current page as active
+    $tree[$tid]['active_trail'] = '2';
+    // Add active trail to the parent(s)
+    $parent = $tree[$tid]['parents'][0];
+    for ($i = 0; $i < $tree[$tid]['depth']; $i++) {
+      $tree[$parent]['active_trail'] = '1';
+      $parent = $tree[$parent]['parents'][0];
+    }
   }
-  return $active_trail;
+
+  return $tree;
+}
+
+/**
+ * Nest tree 
+ */
+function taxonomy_menu_block_nest_tree($tree, $root = '0') {
+  $nested_tree = array();
+
+  // Loop over the tree and search for direct children of the root
+  foreach ($tree as $tid => $term) {
+    // Direct child is found
+    if ($term['parents'][0] == $root) {
+      // Remove item from tree (we don't need to traverse this again)
+      unset($tree[$tid]);
+      // Append the child into result array and parse its children
+      $nested_tree[$tid] = $term;
+      $nested_tree[$tid]['children'] = taxonomy_menu_block_nest_tree($tree, $tid);
+    }
+  }
+  return $nested_tree;
+}
+
+/**
+ * Generate markup for our list
+ */
+function theme_taxonomy_menu_block($tree) {
+  $num_items = count($tree);
+  $i = 0;
+
+  $output = '<ul>';
+  foreach ($tree as $tid => $term) {
+    $i++;
+    // Add classes
+    $attributes['class'] = array();
+    if ($i == 1) {
+      $attributes['class'][] = 'first';
+    }
+    if ($i == $num_items) {
+      $attributes['class'][] = 'last';
+    }
+    if ($term['active_trail'] == '1') {
+      $attributes['class'][] = 'active-trail';
+    }
+    if ($term['active_trail'] == '2') {
+      $attributes['class'][] = 'active';
+    }
+
+    $output .= '<li' . drupal_attributes($attributes) . '>' . l($term['name'], 'taxonomy/term/' . $tid);
+    if (!empty($term['children'])) {
+      $output .= theme_taxonomy_menu_block($term['children']);
+    }
+    $output .= '</li>';
+  }
+  $output .= '</ul>';
+
+  return $output;
 }
