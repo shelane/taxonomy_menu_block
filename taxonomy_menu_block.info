@@ -1,5 +1,6 @@
 name = Taxonomy menu block
 description = Make menu blocks out of your taxonomies
 core = 7.x
+version = 7.x-2.0
 dependencies[] = taxonomy
 dependencies[] = block
