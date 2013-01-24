@@ -96,12 +96,7 @@ function taxonomy_menu_block_build($config) {
   $parent = NULL;
 
   // Get tree
-  if ($config['parent'] == '1') {
-    $tree = taxonomy_menu_block_get_tree($config['vid'], $config['parent_fixed']);
-    $parent = $config['parent_fixed'];
-  } else {
-    $tree = taxonomy_menu_block_get_tree($config['vid']);
-  }
+  $tree = taxonomy_menu_block_get_tree($config['vid']);
 
   // Find active tid
   $tid = taxonomy_menu_block_find_active_tid($tree, $config['vid']);
@@ -109,7 +104,7 @@ function taxonomy_menu_block_build($config) {
   // Let other modules alter the active tid
   drupal_alter('active_tid', $tid);
 
-  // If we have a Dynamic parent and no active tid, bail out
+  // If we have a dynamic parent and no active tid, bail out
   if ($config['parent'] == '2' && !$tid) {
     return;
   }
@@ -117,9 +112,13 @@ function taxonomy_menu_block_build($config) {
   // Add the active trail
   $tree = taxonomy_menu_block_add_active_trail($tree, $tid);
 
-  // If we have a Dynamic parent, trim according to option
+  // Set parent for fixed parent blocks
+  if ($config['parent'] == '1') {
+    $parent = $config['parent_fixed'];
+  }
+
+  // If we have a dynamic parent, find the parent tid
   if ($config['parent'] == '2') {
-    // Find parent
     if ($config['parent_dynamic'] != '0') {
       // Loop over tree and find the highest item in active trail, taking into account 
       // our specified depth
@@ -132,48 +131,46 @@ function taxonomy_menu_block_build($config) {
       $parent = $tid;
     }
 
-    if ($parent) {
-      // Loop over tree, store all items that have higher depth than parent
-      // First item that has the same depth means new branch of tree
-      $start = FALSE;
-      $branch = array();
-
-      foreach ($tree as $key => $term) {
-        // Stop storing once we hit a term with same depth as $parent
-        if ($term['depth'] <= $tree[$parent]['depth']) {
-          $start = FALSE;
-        }
-        if ($start == TRUE) {
-          $branch[$key] = $term;
-        }
-        // Only start storing from when we hit $parent
-        if ($key == $parent && $start != TRUE) {
-          $start = TRUE;
-        }
-      }
-
-      // An empty array means that we don't have any children for this branch
-      if ($branch) {
-        $tree = $branch;
-      } else {
-        return;
-      }
-    } else {
-      // Since we know we have an active tid, no parent can only mean user didn't configure correctly
+    // Since we know we have an active tid, no parent can only mean user didn't configure correctly
+    if (!$parent) {
       drupal_set_message(t('Parent level or depth configured incorrectly'), 'error');
+      return;
+    }
+  }
+
+  // Trim tree to one branch
+  if ($parent) {
+    // Loop over tree, store all items that have higher depth than parent
+    // First item that has the same depth means new branch of tree
+    $start = FALSE;
+    $branch = array();
+
+    foreach ($tree as $key => $term) {
+      // Stop storing once we hit a term with same depth as $parent
+      if ($term['depth'] <= $tree[$parent]['depth']) {
+        $start = FALSE;
+      }
+      if ($start == TRUE) {
+        $branch[$key] = $term;
+      }
+      // Only start storing from when we hit $parent
+      if ($key == $parent && $start != TRUE) {
+        $start = TRUE;
+      }
+    }
+
+    // An empty array means that we don't have any children for this branch
+    if ($branch) {
+      $tree = $branch;
+    } else {
       return;
     }
   }
 
   // Depth trim. Always do this last as to not lose the active trail
   if ($config['depth'] != '0') {
-    if ($config['parent'] != '1') {
-      // Substract one of our max depth because Drupal considers 0 to be the root level
-      $max_depth = $config['depth'] - 1;
-    } else {
-      // Add one because taxonomy_get_tree() returns a different depth when a fixed parent is passed along
-      $max_depth = $config['depth'] + 1;
-    }
+    // Substract one of our max depth because Drupal considers 0 to be the root level
+    $max_depth = $config['depth'] - 1;
 
     $temp_tree = array();
     foreach ($tree as $tid => $term) {
@@ -243,33 +240,78 @@ function taxonomy_menu_block_get_config($delta = NULL) {
 /**
  * Generate taxonomy tree, taking into account i18n 
  */
-function taxonomy_menu_block_get_tree($vid, $parent_fixed = 0) {
-
-  $data = array();
+function taxonomy_menu_block_get_tree($vid) {
 
   if (module_exists('i18n_taxonomy')) {
-    // Todo: check if fixed parent tid has sisters in other language?
-    global $language;
-    $lang = $language->language;
 
-    $data = i18n_taxonomy_get_tree($vid, $lang, $parent_fixed);
+    // Get translate settings of vocabulary
+    $mode = i18n_taxonomy_vocabulary_mode($vid);
 
-    if ((isset($data)) && (count($data) == 0)) {
+    // Vocabulary has a language
+    if ($mode == '4' || $mode == '2') {
+      global $language;
+      $lang = $language->language;
+
+      // Get cache. Format of cache id: module_name-vid-language
+      $cache = cache_get('taxonomy_menu_block' . '-' . $vid . '-' . $lang);
+
+      // If cache doesn't exist yet
+      if (!$cache) {
+        $data = i18n_taxonomy_get_tree($vid, $lang);
+        // If data is empty, we have a vocabulary that is set to Translate or Fixed but
+        // none of the terms are actually translated (in the current language)
+        if (empty($data)) {
+          return;
+        }
+        $tree = taxonomy_menu_block_structure_tree($data, $lang);
+        // Set cache
+        $cache = cache_set('taxonomy_menu_block' . '-' . $vid . '-' . $lang, $tree);
+      } else {
+        $tree = $cache->data;
+      }
+    }
+
+    // Language of terms is undefined
+    if ($mode == '0' || $mode == '1') {
       $lang = 'und';
-      $data = i18n_taxonomy_localize_terms(i18n_taxonomy_get_tree($vid, $lang, $parent_fixed));
+
+      $cache = cache_get('taxonomy_menu_block' . '-' . $vid . '-' . $lang);
+
+      if (!$cache) {
+        $data = i18n_taxonomy_localize_terms(i18n_taxonomy_get_tree($vid, $lang));
+        $tree = taxonomy_menu_block_structure_tree($data, $lang);
+        $cache = cache_set('taxonomy_menu_block' . '-' . $vid . '-' . $lang, $tree);
+      } else {
+        $tree = $cache->data;
+      }
     }
   } else {
-    $data = taxonomy_get_tree($vid, $parent_fixed);
+    $cache = cache_get('taxonomy_menu_block' . '-' . $vid);
+    if (!$cache) {
+      $data = taxonomy_get_tree($vid);
+      $tree = taxonomy_menu_block_structure_tree($data);
+      $cache = cache_set('taxonomy_menu_block' . '-' . $vid, $tree);
+    } else {
+      $tree = $cache->data;
+    }
   }
 
-  // Restructure tree with only the info we need
+  return $tree;
+}
+
+/**
+ * Structure tree with only the info we need
+ */
+function taxonomy_menu_block_structure_tree($data, $lang = NULL) {
   $tree = array();
 
   foreach ($data as $term) {
-    // Localized terms that aren't translated don't have a depth or parents defined.
-    // We leave those out here
+    // If one term in a localized taxonomy isn't translated all terms get returned
+    // without a depth or a parent, giving us unusable results. We leave those out here
     if (isset($term->depth)) {
       $branch['name'] = $term->name;
+      // Get path here as it requires an extra db query. This way we get it in cache
+      $branch['path'] = drupal_get_path_alias('taxonomy/term/' . $term->tid, $lang);
       $branch['depth'] = $term->depth;
       $branch['parents'] = $term->parents;
       $branch['active_trail'] = '0';
@@ -407,7 +449,7 @@ function theme_taxonomy_menu_block($tree) {
       $attributes['class'][] = 'active';
     }
 
-    $output .= '<li' . drupal_attributes($attributes) . '>' . l($term['name'], 'taxonomy/term/' . $tid);
+    $output .= '<li' . drupal_attributes($attributes) . '>' . l($term['name'], $term['path']);
     if (!empty($term['children'])) {
       $output .= theme_taxonomy_menu_block($term['children']);
     }

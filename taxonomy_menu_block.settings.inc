@@ -44,6 +44,15 @@ function _taxonomy_menu_block_form_alter(&$form, &$form_state, $form_id) {
         $form['blocks']['taxonomy_menu_block_' . $delta]['delete'] = array('#type' => 'link', '#title' => t('delete'), '#href' => 'admin/structure/block/delete-taxonomy-menu-block/' . $delta);
       }
       break;
+    case 'taxonomy_overview_terms':
+      $form['#submit'][] = 'taxonomy_menu_block_clear_cache';
+      break;
+    case 'taxonomy_form_term':
+      $form['#submit'][] = 'taxonomy_menu_block_clear_cache';
+      break;
+    case 'taxonomy_form_vocabulary':
+      $form['#submit'][] = 'taxonomy_menu_block_clear_cache';
+      break;
   }
 }
 
@@ -145,6 +154,9 @@ function taxonomy_menu_block_delete($form, &$form_state, $delta = 0) {
 function taxonomy_menu_block_delete_submit($form, &$form_state) {
   // Get delta
   $delta = $form_state['values']['delta'];
+
+  $name = taxonomy_menu_block_get_name($delta);
+
   // Remove the menu block configuration variables.
   $block_ids = variable_get('taxonomy_menu_block_ids', array());
   unset($block_ids[array_search($delta, $block_ids)]);
@@ -162,7 +174,6 @@ function taxonomy_menu_block_delete_submit($form, &$form_state) {
           ->condition('delta', $delta)
           ->execute();
 
-  $name = taxonomy_menu_block_get_name($delta);
   drupal_set_message(t('The block "%name" has been removed.', array('%name' => $name)));
   cache_clear_all();
   $form_state['redirect'] = 'admin/structure/block';
@@ -180,6 +191,7 @@ function _taxonomy_menu_block_block_info() {
   foreach ($deltas as $delta) {
     $name = taxonomy_menu_block_get_name($delta);
     $blocks[$delta]['info'] = $name;
+    $blocks[$delta]['cache'] = DRUPAL_CACHE_PER_PAGE;
   }
 
   return $blocks;
@@ -345,4 +357,14 @@ function taxonomy_menu_block_get_name($delta) {
     $name = $name . ' (' . $config['admin_title'] . ')';
   }
   return $name;
+}
+
+/**
+ * Function to clear all Taxonomy Menu Block caches for a certain vid 
+ */
+function taxonomy_menu_block_clear_cache($form, &$form_state) {
+  $vid = $form['#vocabulary']->vid;
+  $cache_name = 'taxonomy_menu_block-' . $vid;
+  
+  db_query("DELETE FROM {cache} WHERE cid LIKE :block", array(':block' => db_like($cache_name) . '%'));
 }
