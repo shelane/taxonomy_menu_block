@@ -102,7 +102,7 @@ function taxonomy_menu_block_build($config) {
   $tid = taxonomy_menu_block_find_active_tid($tree, $config['vid']);
 
   // Let other modules alter the active tid
-  drupal_alter('active_tid', $tid);
+  drupal_alter('active_tid', $tid, $config);
 
   // If we have a dynamic parent and no active tid, bail out
   if ($config['parent'] == '2' && !$tid) {
@@ -191,7 +191,7 @@ function taxonomy_menu_block_build($config) {
   }
 
   // Let other modules alter the taxonomy tree data
-  drupal_alter('taxonomy_tree', $tree);
+  drupal_alter('taxonomy_tree', $tree, $config);
 
   // Nest tree
   // If we have a parent, pass along parent
@@ -202,7 +202,7 @@ function taxonomy_menu_block_build($config) {
   }
 
   // Theme tree
-  $data['content'] = theme_taxonomy_menu_block($tree);
+  $data['content'] = theme_taxonomy_menu_block($tree, $config);
 
   return $data;
 }
@@ -427,7 +427,7 @@ function taxonomy_menu_block_nest_tree($tree, $root = '0') {
 /**
  * Generate markup for our list
  */
-function theme_taxonomy_menu_block($tree) {
+function theme_taxonomy_menu_block($tree, $config = NULL) {
   $num_items = count($tree);
   $i = 0;
 

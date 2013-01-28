@@ -118,6 +118,7 @@ function taxonomy_menu_block_add_block_form_submit($form, &$form_state) {
 function taxonomy_menu_block_save_block($delta = '', $values = array()) {
   if (!empty($delta)) {
     $taxonomy_menu_block = array();
+    $taxonomy_menu_block['delta'] = $delta;
     $taxonomy_menu_block['admin_title'] = $values['admin_title'];
     $taxonomy_menu_block['vid'] = $values['vid'];
     $taxonomy_menu_block['parent'] = $values['parent'];
