@@ -22,40 +22,40 @@ function taxonomy_menu_block_edit_block($form, &$form_state) {
 function taxonomy_menu_block_menu() {
   // Add block form
   $items['admin/structure/block/add-taxonomy-menu-block'] = array(
-      'title' => 'Add taxonomy menu block',
-      'description' => 'Add a new taxonomy menu block.',
-      'page callback' => 'drupal_get_form',
-      'page arguments' => array('taxonomy_menu_block_add_block_form'),
-      'access arguments' => array('administer blocks'),
-      'type' => MENU_LOCAL_ACTION,
-      'file' => 'taxonomy_menu_block.settings.inc',
-  );
+    'title' => 'Add taxonomy menu block',
+    'description' => 'Add a new taxonomy menu block.',
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('taxonomy_menu_block_add_block_form'),
+    'access arguments' => array('administer blocks'),
+    'type' => MENU_LOCAL_ACTION,
+    'file' => 'taxonomy_menu_block.settings.inc',
+    );
 
   // Display "add taxonomy menu block" link on block overview page
   $default_theme = variable_get('theme_default', 'bartik');
   foreach (list_themes() as $key => $theme) {
     if ($key != $default_theme) {
       $items['admin/structure/block/list/' . $key . '/add-taxonomy-menu-block'] = array(
-          'title' => 'Add taxonomy menu block',
-          'description' => 'Add a new taxonomy menu block.',
-          'page callback' => 'drupal_get_form',
-          'page arguments' => array('taxonomy_menu_block_add_block_form'),
-          'access arguments' => array('administer blocks'),
-          'type' => MENU_LOCAL_ACTION,
-          'file' => 'taxonomy_menu_block.settings.inc',
-      );
+        'title' => 'Add taxonomy menu block',
+        'description' => 'Add a new taxonomy menu block.',
+        'page callback' => 'drupal_get_form',
+        'page arguments' => array('taxonomy_menu_block_add_block_form'),
+        'access arguments' => array('administer blocks'),
+        'type' => MENU_LOCAL_ACTION,
+        'file' => 'taxonomy_menu_block.settings.inc',
+        );
     }
   }
 
   // Delete block
   $items['admin/structure/block/delete-taxonomy-menu-block'] = array(
-      'title' => 'Delete taxonomy menu block',
-      'page callback' => 'drupal_get_form',
-      'page arguments' => array('taxonomy_menu_block_delete'),
-      'access arguments' => array('administer blocks'),
-      'type' => MENU_CALLBACK,
-      'file' => 'taxonomy_menu_block.settings.inc',
-  );
+    'title' => 'Delete taxonomy menu block',
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('taxonomy_menu_block_delete'),
+    'access arguments' => array('administer blocks'),
+    'type' => MENU_CALLBACK,
+    'file' => 'taxonomy_menu_block.settings.inc',
+    );
 
   return $items;
 }
@@ -102,7 +102,7 @@ function taxonomy_menu_block_build($config) {
   $tid = taxonomy_menu_block_find_active_tid($tree, $config['vid']);
 
   // Let other modules alter the active tid
-  drupal_alter('active_tid', $tid, $config);
+  drupal_alter('taxonomy_menu_block_active_tid', $tid, $config);
 
   // If we have a dynamic parent and no active tid, bail out
   if ($config['parent'] == '2' && !$tid) {
@@ -191,7 +191,7 @@ function taxonomy_menu_block_build($config) {
   }
 
   // Let other modules alter the taxonomy tree data
-  drupal_alter('taxonomy_tree', $tree, $config);
+  drupal_alter('taxonomy_menu_block_tree', $tree, $config);
 
   // Nest tree
   // If we have a parent, pass along parent
@@ -219,14 +219,14 @@ function taxonomy_menu_block_build($config) {
 function taxonomy_menu_block_get_config($delta = NULL) {
   // Initialize
   $config = array(
-      'delta' => $delta,
-      'admin_title' => '',
-      'vid' => 1,
-      'parent' => 0,
-      'parent_fixed' => 0,
-      'parent_dynamic' => 1,
-      'depth' => 0,
-  );
+    'delta' => $delta,
+    'admin_title' => '',
+    'vid' => 1,
+    'parent' => 0,
+    'parent_fixed' => 0,
+    'parent_dynamic' => 1,
+    'depth' => 0,
+    );
 
   // Get the block configuration options.
   if ($delta) {
@@ -243,47 +243,25 @@ function taxonomy_menu_block_get_config($delta = NULL) {
 function taxonomy_menu_block_get_tree($vid) {
 
   if (module_exists('i18n_taxonomy')) {
+    global $language;
+    $lang = $language->language;
 
-    // Get translate settings of vocabulary
-    $mode = i18n_taxonomy_vocabulary_mode($vid);
+    // Get cache. Format of cache id: module_name-vid-language
+    $cache = cache_get('taxonomy_menu_block' . '-' . $vid . '-' . $lang);
 
-    // Vocabulary has a language
-    if ($mode == '4' || $mode == '2') {
-      global $language;
-      $lang = $language->language;
+    if ($cache) {
+      $tree = $cache->data;
+    } else {
+      $data = i18n_taxonomy_get_tree($vid, $lang);
 
-      // Get cache. Format of cache id: module_name-vid-language
-      $cache = cache_get('taxonomy_menu_block' . '-' . $vid . '-' . $lang);
-
-      // If cache doesn't exist yet
-      if (!$cache) {
-        $data = i18n_taxonomy_get_tree($vid, $lang);
-        // If data is empty, we have a vocabulary that is set to Translate or Fixed but
-        // none of the terms are actually translated (in the current language)
-        if (empty($data)) {
-          return;
-        }
-        $tree = taxonomy_menu_block_structure_tree($data, $lang);
-        // Set cache
-        $cache = cache_set('taxonomy_menu_block' . '-' . $vid . '-' . $lang, $tree);
-      } else {
-        $tree = $cache->data;
+      // If data is empty, we have a vocabulary that is set to Translate or Fixed but
+      // none of the terms are actually translated (in the current language)
+      // Or vacobulary is set to localize
+      if (empty($data)) {
+        $data = i18n_taxonomy_localize_terms(i18n_taxonomy_get_tree($vid, 'und'));
       }
-    }
-
-    // Language of terms is undefined
-    if ($mode == '0' || $mode == '1') {
-      $lang = 'und';
-
-      $cache = cache_get('taxonomy_menu_block' . '-' . $vid . '-' . $lang);
-
-      if (!$cache) {
-        $data = i18n_taxonomy_localize_terms(i18n_taxonomy_get_tree($vid, $lang));
-        $tree = taxonomy_menu_block_structure_tree($data, $lang);
-        $cache = cache_set('taxonomy_menu_block' . '-' . $vid . '-' . $lang, $tree);
-      } else {
-        $tree = $cache->data;
-      }
+      $tree = taxonomy_menu_block_structure_tree($data, $lang);
+      $cache = cache_set('taxonomy_menu_block' . '-' . $vid . '-' . $lang, $tree);
     }
   } else {
     $cache = cache_get('taxonomy_menu_block' . '-' . $vid);
@@ -449,7 +427,8 @@ function theme_taxonomy_menu_block($tree, $config = NULL) {
       $attributes['class'][] = 'active';
     }
 
-    $output .= '<li' . drupal_attributes($attributes) . '>' . l($term['name'], $term['path']);
+    // Set alias option to true so we don't have to query for the alias every time, as this is cached anyway
+    $output .= '<li' . drupal_attributes($attributes) . '>' . l($term['name'], $term['path'], $options = array('alias' => TRUE));
     if (!empty($term['children'])) {
       $output .= theme_taxonomy_menu_block($term['children']);
     }
