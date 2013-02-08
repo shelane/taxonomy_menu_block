@@ -363,7 +363,7 @@ function taxonomy_menu_block_get_name($delta) {
 /**
  * Function to clear all Taxonomy Menu Block caches for a certain vid 
  */
-function taxonomy_menu_block_clear_cache($form, &$form_state) {
+function _taxonomy_menu_block_clear_cache($form, &$form_state) {
   $vid = $form['#vocabulary']->vid;
   $cache_name = 'taxonomy_menu_block-' . $vid;
   
