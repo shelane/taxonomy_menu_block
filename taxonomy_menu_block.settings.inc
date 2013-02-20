@@ -1,17 +1,5 @@
 <?php
 
-/*
- * Implementation of hook_theme
- */
-
-function taxonomy_menu_block_theme() {
-  return array(
-      'taxonomy_menu_block' => array(
-          'variables' => array('items' => NULL),
-      ),
-  );
-}
-
 /**
  * Menu callback: display the taxonomy menu block add form
  */

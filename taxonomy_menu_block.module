@@ -66,6 +66,21 @@ function taxonomy_menu_block_menu() {
 }
 
 /**
+ * Implementation of hook_theme
+ */
+
+function taxonomy_menu_block_theme() {
+  return array(
+      'taxonomy_menu_block' => array(
+          'variables' => array(
+            'items' => NULL, 
+            'config' => NULL
+            ),
+      ),
+  );
+}
+
+/**
  * Implements hook_block_view().
  */
 function taxonomy_menu_block_block_view($delta = '') {
@@ -207,7 +222,7 @@ function taxonomy_menu_block_build($config) {
   }
 
   // Theme tree
-  $data['content'] = theme_taxonomy_menu_block($tree, $config);
+  $data['content'] = theme('taxonomy_menu_block', array('items' => $tree, 'config' => $config));
 
   return $data;
 }
@@ -411,7 +426,10 @@ function taxonomy_menu_block_nest_tree($tree, $root = '0') {
 /**
  * Generate markup for our list
  */
-function theme_taxonomy_menu_block($tree, $config = NULL) {
+function theme_taxonomy_menu_block($variables) {
+  $tree = $variables['items'];
+  $config = $variables['config'];
+
   $num_items = count($tree);
   $i = 0;
 
@@ -420,6 +438,7 @@ function theme_taxonomy_menu_block($tree, $config = NULL) {
     $i++;
     // Add classes
     $attributes['class'] = array();
+    $classes = '';
     if ($i == 1) {
       $attributes['class'][] = 'first';
     }
@@ -432,11 +451,15 @@ function theme_taxonomy_menu_block($tree, $config = NULL) {
     if ($term['active_trail'] == '2') {
       $attributes['class'][] = 'active';
     }
+    // If we have classes, flatten to a string
+    if (!empty($attributes['class'])) {      
+      $classes = drupal_attributes($attributes);
+    }
 
     // Set alias option to true so we don't have to query for the alias every time, as this is cached anyway
-    $output .= '<li' . drupal_attributes($attributes) . '>' . l($term['name'], $term['path'], $options = array('alias' => TRUE));
+    $output .= '<li' . $classes . '>' . l($term['name'], $term['path'], $options = array('alias' => TRUE));
     if (!empty($term['children'])) {
-      $output .= theme_taxonomy_menu_block($term['children']);
+      $output .= theme_taxonomy_menu_block(array('items' => $term['children'], 'config' => $config));
     }
     $output .= '</li>';
   }
