@@ -1,3 +1,8 @@
+/**
+ * @file
+ * JS for Taxonomy menu block module
+ */
+
 (function($) {
   Drupal.behaviors.Taxonomy_Menu_Block = {
     attach: function (context) {

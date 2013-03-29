@@ -1,5 +1,11 @@
 <?php
 
+/**
+ * @file
+ * This module allows you to make menu blocks out of your taxonomies in a very
+ * performant way
+ */
+
 // Off-load the following infrequently called hooks & functions to another file.
 function taxonomy_menu_block_form_alter(&$form, &$form_state, $form_id) {
   module_load_include('inc', 'taxonomy_menu_block', 'taxonomy_menu_block.settings');
@@ -147,7 +153,8 @@ function taxonomy_menu_block_build($config) {
           $parent = $key;
         }
       }
-    } else {
+    }
+    else {
       $parent = $tid;
     }
 
@@ -182,7 +189,8 @@ function taxonomy_menu_block_build($config) {
     // An empty array means that we don't have any children for this branch
     if ($branch) {
       $tree = $branch;
-    } else {
+    }
+    else {
       return;
     }
   }
@@ -200,7 +208,8 @@ function taxonomy_menu_block_build($config) {
     }
     if ($temp_tree) {
       $tree = $temp_tree;
-    } else {
+    }
+    else {
       return;
     }
   }
@@ -217,7 +226,8 @@ function taxonomy_menu_block_build($config) {
   // If we have a parent, pass along parent
   if ($parent) {
     $tree = taxonomy_menu_block_nest_tree($tree, $parent);
-  } else {
+  }
+  else {
     $tree = taxonomy_menu_block_nest_tree($tree);
   }
 
@@ -271,7 +281,8 @@ function taxonomy_menu_block_get_tree($vid) {
 
     if ($cache) {
       $tree = $cache->data;
-    } else {
+    }
+    else {
       $data = i18n_taxonomy_get_tree($vid, $lang);
 
       // If data is empty, we have a vocabulary that is set to Translate or Fixed but
@@ -284,13 +295,15 @@ function taxonomy_menu_block_get_tree($vid) {
       $tree = taxonomy_menu_block_structure_tree($data, $lang);
       $cache = cache_set('taxonomy_menu_block' . '-' . $vid . '-' . $lang, $tree);
     }
-  } else {
+  }
+  else {
     $cache = cache_get('taxonomy_menu_block' . '-' . $vid);
     if (!$cache) {
       $data = taxonomy_get_tree($vid);
       $tree = taxonomy_menu_block_structure_tree($data);
       $cache = cache_set('taxonomy_menu_block' . '-' . $vid, $tree);
-    } else {
+    }
+    else {
       $tree = $cache->data;
     }
   }

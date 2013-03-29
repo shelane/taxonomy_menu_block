@@ -1,4 +1,8 @@
 <?php
+/**
+ * @file
+ * Admin functions and form settings for Taxonomy menu block module
+ */
 
 /**
  * Menu callback: display the taxonomy menu block add form
@@ -29,7 +33,10 @@ function _taxonomy_menu_block_form_alter(&$form, &$form_state, $form_id) {
     case 'block_admin_display_form':
       // Display a "delete" link next to each taxonomy menu block
       foreach (variable_get('taxonomy_menu_block_ids', array()) as $delta) {
-        $form['blocks']['taxonomy_menu_block_' . $delta]['delete'] = array('#type' => 'link', '#title' => t('delete'), '#href' => 'admin/structure/block/delete-taxonomy-menu-block/' . $delta);
+        $form['blocks']['taxonomy_menu_block_' . $delta]['delete'] = array(
+          '#type' => 'link',
+          '#title' => t('delete'),
+          '#href' => 'admin/structure/block/delete-taxonomy-menu-block/' . $delta);
       }
       break;
     case 'taxonomy_overview_terms':
@@ -213,7 +220,8 @@ function taxonomy_menu_block_form_options(&$form, &$form_state) {
   // Build the fixed parent dropdown list
   if ($config['vid']) {
     $parents_fixed = taxonomy_menu_block_get_parents_fixed($config['vid']);
-  } else {
+  }
+  else {
     $parents_fixed = taxonomy_menu_block_get_parents_fixed(key($vocabs));
   }
 
