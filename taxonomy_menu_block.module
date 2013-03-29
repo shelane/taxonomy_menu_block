@@ -73,7 +73,7 @@ function taxonomy_menu_block_theme() {
   return array(
       'taxonomy_menu_block' => array(
           'variables' => array(
-            'items' => NULL, 
+            'items' => NULL,
             'config' => NULL
             ),
       ),
@@ -93,19 +93,19 @@ function taxonomy_menu_block_block_view($delta = '') {
  * Function to build our tree
  * @param $config
  *    array An array of configuration options that specifies how to build the
- *    taxonomy tree 
+ *    taxonomy tree
  *    - admin_title: Administrative title to use on the block admin page
  *    - vid: Taxonomy vocabulary id
  *    - parent: What kind of tree we will build
  *        0: Display the whole tree
  *        1: Fixed parent: display only a branch of tree, parent is given
- *        2: Dynamic tree: will look at currently viewed page, find an active tid and 
+ *        2: Dynamic tree: will look at currently viewed page, find an active tid and
  *           display the children of that tid
  *    - parent_fixed: The fixed parent tid in case parent is set to 1
- *    - parent_dynamic: Determines at what depth we need to find the parent tid in case 
+ *    - parent_dynamic: Determines at what depth we need to find the parent tid in case
  *      parent is set to 2
  *    - depth: Until what depth we need to render our tree.
- * @return 
+ * @return
  *    Array that contains one value: content, which is the fully rendered HTML
  *    of our tree
  */
@@ -140,7 +140,7 @@ function taxonomy_menu_block_build($config) {
   // If we have a dynamic parent, find the parent tid
   if ($config['parent'] == '2') {
     if ($config['parent_dynamic'] != '0') {
-      // Loop over tree and find the highest item in active trail, taking into account 
+      // Loop over tree and find the highest item in active trail, taking into account
       // our specified depth
       foreach ($tree as $key => $term) {
         if ($term['active_trail'] != '0' && $term['depth'] == ($config['parent_dynamic'] - 1)) {
@@ -258,7 +258,7 @@ function taxonomy_menu_block_get_config($delta = NULL) {
 }
 
 /**
- * Generate taxonomy tree, taking into account i18n 
+ * Generate taxonomy tree, taking into account i18n
  */
 function taxonomy_menu_block_get_tree($vid) {
 
@@ -322,7 +322,7 @@ function taxonomy_menu_block_structure_tree($data, $lang = NULL) {
 }
 
 /**
- * Get currently active tid 
+ * Get currently active tid
  */
 function taxonomy_menu_block_find_active_tid($tree, $vid) {
   $active = NULL;
@@ -380,7 +380,7 @@ function taxonomy_menu_block_find_active_tid($tree, $vid) {
 }
 
 /**
- * Add active trail 
+ * Add active trail
  * Options:
  *  0 = not active. This has already been set as default in taxonomy_menu_block_get_tree()
  *  1 = active trail
@@ -404,7 +404,7 @@ function taxonomy_menu_block_add_active_trail($tree, $tid = NULL) {
 }
 
 /**
- * Nest tree 
+ * Nest tree
  */
 function taxonomy_menu_block_nest_tree($tree, $root = '0') {
   $nested_tree = array();
@@ -452,7 +452,7 @@ function theme_taxonomy_menu_block($variables) {
       $attributes['class'][] = 'active';
     }
     // If we have classes, flatten to a string
-    if (!empty($attributes['class'])) {      
+    if (!empty($attributes['class'])) {
       $classes = drupal_attributes($attributes);
     }
 

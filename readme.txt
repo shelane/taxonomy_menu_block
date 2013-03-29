@@ -2,8 +2,10 @@ TAXONOMY MENU BLOCK
 *******************
 
 This module allows you to make menu blocks out of your taxonomies. 
-A Taxonomy Menu Block will output a (nested) unordered list of term names, linked to that term's detail page.
-Install the module and go to admin/structure/block to start adding Taxonomy Menu Blocks
+A Taxonomy Menu Block will output a (nested) unordered list of term names, 
+linked to that term's detail page.
+Install the module and go to admin/structure/block 
+to start adding Taxonomy Menu Blocks
 
 Options:
 --------
@@ -14,7 +16,8 @@ Displays the whole vocabulary.
 Render only the sub-terms of a certain parent. 
 
 3. Dynamic parent
-Only the currently active branch will be displayed. For example, if we have the following vocabulary:
+Only the currently active branch will be displayed. For example, 
+if we have the following vocabulary:
 
 - Term one
 - Term two
@@ -26,10 +29,14 @@ Only the currently active branch will be displayed. For example, if we have the 
 -- Term eight
 -- Term nine
 
-If you are viewing Term two or any sub-term of Term two or a node coupled to Term two or any sub-term of Term two, all the children of Term two are considered the currently active branch, and will be displayed.
+If you are viewing Term two or any sub-term of Term two or a node coupled 
+to Term two or any sub-term of Term two, all the children of Term two 
+are considered the currently active branch, and will be displayed.
 
 Visibility of blocks are controlled via the standard Block visibility settings. 
-"Dynamic parent" blocks will only show on term pages (taxonomy/term/%) and certain node pages, depending if those nodes have a term reference field referencing to the vocabulary you chose in your configuration.
+"Dynamic parent" blocks will only show on term pages (taxonomy/term/%) and 
+certain node pages, depending if those nodes have a term reference field 
+referencing to the vocabulary you chose in your configuration.
 
 Functionalities:
 ----------------

@@ -13,7 +13,7 @@ function taxonomy_menu_block_add_block_form($form, &$form_state) {
 }
 
 /**
- * Implement hook_form_alter 
+ * Implement hook_form_alter
  */
 function _taxonomy_menu_block_form_alter(&$form, &$form_state, $form_id) {
   switch ($form_id) {
@@ -47,7 +47,7 @@ function _taxonomy_menu_block_form_alter(&$form, &$form_state, $form_id) {
 /**
  * Submit function
  * @param type $form
- * @param array $form_state 
+ * @param array $form_state
  */
 function taxonomy_menu_block_add_block_form_submit($form, &$form_state) {
   // Determine the delta of the new block.
@@ -101,7 +101,7 @@ function taxonomy_menu_block_add_block_form_submit($form, &$form_state) {
 }
 
 /**
- * Save function 
+ * Save function
  */
 function taxonomy_menu_block_save_block($delta = '', $values = array()) {
   if (!empty($delta)) {
@@ -120,7 +120,7 @@ function taxonomy_menu_block_save_block($delta = '', $values = array()) {
 }
 
 /**
- * Edit function 
+ * Edit function
  */
 function _taxonomy_menu_block_edit_block($form, &$form_state) {
   taxonomy_menu_block_save_block($form['delta']['#value'], $form_state['values']);
@@ -189,7 +189,7 @@ function _taxonomy_menu_block_block_info() {
 /**
  * Function that will add Taxonomy Menu Block options to the standard Block add/edit form
  * @param type $form
- * @param type $form_state 
+ * @param type $form_state
  */
 function taxonomy_menu_block_form_options(&$form, &$form_state) {
   $form['#attached']['css'][] = drupal_get_path('module', 'taxonomy_menu_block') . '/taxonomy_menu_block_admin.css';
@@ -315,11 +315,11 @@ function taxonomy_menu_block_ajax_parent_callback($form, $form_state) {
 
 /**
  * Get parent tids
- * 
+ *
  * @param $vid
  *    Vocabulary id
  * @return $parents_fixed
- *    Array of terms of a certain vocabulary 
+ *    Array of terms of a certain vocabulary
  */
 function taxonomy_menu_block_get_parents_fixed($vid = NULL) {
 
@@ -337,7 +337,7 @@ function taxonomy_menu_block_get_parents_fixed($vid = NULL) {
 }
 
 /**
- * Function to get block name 
+ * Function to get block name
  */
 function taxonomy_menu_block_get_name($delta) {
   $name = t('Taxonomy Menu Block');
@@ -349,11 +349,11 @@ function taxonomy_menu_block_get_name($delta) {
 }
 
 /**
- * Function to clear all Taxonomy Menu Block caches for a certain vid 
+ * Function to clear all Taxonomy Menu Block caches for a certain vid
  */
 function _taxonomy_menu_block_clear_cache($form, &$form_state) {
   $vid = $form['#vocabulary']->vid;
   $cache_name = 'taxonomy_menu_block-' . $vid;
-  
+
   db_query("DELETE FROM {cache} WHERE cid LIKE :block", array(':block' => db_like($cache_name) . '%'));
 }

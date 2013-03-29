@@ -6,19 +6,19 @@
  */
 
 /**
- * Alter data of the taxonomy tree before the tree gets nested and sent to the 
+ * Alter data of the taxonomy tree before the tree gets nested and sent to the
  * theme function
- * 
- * @param 
+ *
+ * @param
  *  $tree
- *    A flat array of taxonomy terms, keyed by their tid. It's very important the 
+ *    A flat array of taxonomy terms, keyed by their tid. It's very important the
  *    keys of this array never get reset, as they are used for nesting the tree,
  *    later in the Taxonomy Menu Block module.
- *    The order of the terms is still the same as when returned by the 
+ *    The order of the terms is still the same as when returned by the
  *    taxonomy_get_tree() function.
  *  $config
  *    An array containing configuration of current block
- *  
+ *
  */
 function hook_taxonomy_tree_alter(&$tree, &$config) {
   // Add the number of nodes associated with each term
@@ -33,17 +33,17 @@ function hook_taxonomy_tree_alter(&$tree, &$config) {
 }
 
 /**
- * Alter the active tid 
- * 
+ * Alter the active tid
+ *
  * Dynamic trees get built based on this tid: only the subs of this tid will be
  * shown. The active trail is also based on this active tid
- * 
+ *
  * Currently only taxonomy (taxonomy/term/%) and node (node/%) pages are
  * supported. On taxonomy pages the active tid is always the tid of the currently
- * viewed term, on node pages the active tid is the value of any term reference 
+ * viewed term, on node pages the active tid is the value of any term reference
  * field (if any) that refers to the vocabulary we need to display.
- * 
- * @param 
+ *
+ * @param
  *  $tid
  *    The currently active tid
  *  $config

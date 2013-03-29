@@ -9,7 +9,7 @@
       $('#edit-parent').change(function(){
         $('#dropdown-fixed-parent').toggle($(this).val() == '1');
       });
-      
+
       if($('#edit-parent').val() === '2'){
         $('.form-item-parent-dynamic').show();
       }else{
