@@ -94,7 +94,8 @@ function taxonomy_menu_block_block_view($delta = '') {
 }
 
 /**
- * Function to build our tree
+ * Function to build our tree.
+ * 
  * @param $config
  *   array An array of configuration options that specifies how to build the
  *   taxonomy tree
