@@ -1,11 +1,12 @@
 <?php
+
 /**
  * @file
  * Installation file for taxonomy_block.
  */
 
 /**
- * Implementation of hook_uninstall();
+ * Implements hook_uninstall();
  */
 function taxonomy_menu_block_uninstall() {
   // Delete menu block variables.
@@ -16,10 +17,10 @@ function taxonomy_menu_block_uninstall() {
 
   // Remove block configurations.
   db_delete('block')
-    ->condition('module', 'taxonomy_menu_block')
-    ->execute();
+      ->condition('module', 'taxonomy_menu_block')
+      ->execute();
   db_delete('block_role')
-    ->condition('module', 'taxonomy_menu_block')
-    ->execute();
+      ->condition('module', 'taxonomy_menu_block')
+      ->execute();
   cache_clear_all();
 }

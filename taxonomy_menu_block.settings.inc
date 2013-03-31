@@ -1,15 +1,16 @@
 <?php
+
 /**
  * @file
- * Admin functions and form settings for Taxonomy menu block module
+ * Admin functions and form settings for Taxonomy menu block module.
  */
 
 /**
- * Menu callback: display the taxonomy menu block add form
+ * Menu callback: display the taxonomy menu block add form.
  */
 function taxonomy_menu_block_add_block_form($form, &$form_state) {
   // Load the standard block add form which we will alter later with hook_form_alter()
-  // We do not use hook_block_configure because we need Ajax callbacks
+  // We do not use hook_block_configure because we need Ajax callbacks.
   module_load_include('inc', 'block', 'block.admin');
   $form = block_admin_configure($form, $form_state, 'taxonomy_menu_block', NULL);
 
@@ -17,7 +18,7 @@ function taxonomy_menu_block_add_block_form($form, &$form_state) {
 }
 
 /**
- * Implement hook_form_alter
+ * Implements hook_form_alter()
  */
 function _taxonomy_menu_block_form_alter(&$form, &$form_state, $form_id) {
   switch ($form_id) {
@@ -31,7 +32,7 @@ function _taxonomy_menu_block_form_alter(&$form, &$form_state, $form_id) {
       }
       break;
     case 'block_admin_display_form':
-      // Display a "delete" link next to each taxonomy menu block
+      // Display a "delete" link next to each taxonomy menu block.
       foreach (variable_get('taxonomy_menu_block_ids', array()) as $delta) {
         $form['blocks']['taxonomy_menu_block_' . $delta]['delete'] = array(
           '#type' => 'link',
@@ -66,7 +67,7 @@ function taxonomy_menu_block_add_block_form_submit($form, &$form_state) {
   $block_ids[] = $delta;
   variable_set('taxonomy_menu_block_ids', $block_ids);
 
-  // Save Taxonomy menu block options
+  // Save Taxonomy menu block options.
   taxonomy_menu_block_save_block($delta, $form_state['values']);
 
   // Run the normal new block submission (borrowed from block_add_block_form_submit).
@@ -75,18 +76,18 @@ function taxonomy_menu_block_add_block_form_submit($form, &$form_state) {
     if ($theme->status) {
       $region = !empty($form_state['values']['regions'][$theme->name]) ? $form_state['values']['regions'][$theme->name] : BLOCK_REGION_NONE;
       $query->values(array(
-          'visibility' => (int) $form_state['values']['visibility'],
-          'pages' => trim($form_state['values']['pages']),
-          'custom' => (int) $form_state['values']['custom'],
-          'title' => $form_state['values']['title'],
-          'module' => $form_state['values']['module'],
-          'theme' => $theme->name,
-          'region' => ($region == BLOCK_REGION_NONE ? '' : $region),
-          'status' => 0,
-          'status' => (int) ($region != BLOCK_REGION_NONE),
-          'weight' => 0,
-          'delta' => $delta,
-          'cache' => DRUPAL_NO_CACHE,
+        'visibility' => (int) $form_state['values']['visibility'],
+        'pages' => trim($form_state['values']['pages']),
+        'custom' => (int) $form_state['values']['custom'],
+        'title' => $form_state['values']['title'],
+        'module' => $form_state['values']['module'],
+        'theme' => $theme->name,
+        'region' => ($region == BLOCK_REGION_NONE ? '' : $region),
+        'status' => 0,
+        'status' => (int) ($region != BLOCK_REGION_NONE),
+        'weight' => 0,
+        'delta' => $delta,
+        'cache' => DRUPAL_NO_CACHE,
       ));
     }
   }
@@ -95,9 +96,9 @@ function taxonomy_menu_block_add_block_form_submit($form, &$form_state) {
   $query = db_insert('block_role')->fields(array('rid', 'module', 'delta'));
   foreach (array_filter($form_state['values']['roles']) as $rid) {
     $query->values(array(
-        'rid' => $rid,
-        'module' => $form_state['values']['module'],
-        'delta' => $delta,
+      'rid' => $rid,
+      'module' => $form_state['values']['module'],
+      'delta' => $delta,
     ));
   }
   $query->execute();
@@ -108,7 +109,7 @@ function taxonomy_menu_block_add_block_form_submit($form, &$form_state) {
 }
 
 /**
- * Save function
+ * Save function.
  */
 function taxonomy_menu_block_save_block($delta = '', $values = array()) {
   if (!empty($delta)) {
@@ -127,7 +128,7 @@ function taxonomy_menu_block_save_block($delta = '', $values = array()) {
 }
 
 /**
- * Edit function
+ * Edit function.
  */
 function _taxonomy_menu_block_edit_block($form, &$form_state) {
   taxonomy_menu_block_save_block($form['delta']['#value'], $form_state['values']);
@@ -148,7 +149,7 @@ function taxonomy_menu_block_delete($form, &$form_state, $delta = 0) {
  * Deletion of taxonomy menu blocks.
  */
 function taxonomy_menu_block_delete_submit($form, &$form_state) {
-  // Get delta
+  // Get delta.
   $delta = $form_state['values']['delta'];
 
   $name = taxonomy_menu_block_get_name($delta);
@@ -162,13 +163,13 @@ function taxonomy_menu_block_delete_submit($form, &$form_state) {
   variable_del("taxonomy_menu_block_{$delta}");
 
   db_delete('block')
-          ->condition('module', 'taxonomy_menu_block')
-          ->condition('delta', $delta)
-          ->execute();
+      ->condition('module', 'taxonomy_menu_block')
+      ->condition('delta', $delta)
+      ->execute();
   db_delete('block_role')
-          ->condition('module', 'taxonomy_menu_block')
-          ->condition('delta', $delta)
-          ->execute();
+      ->condition('module', 'taxonomy_menu_block')
+      ->condition('delta', $delta)
+      ->execute();
 
   drupal_set_message(t('The block "%name" has been removed.', array('%name' => $name)));
   cache_clear_all();
@@ -202,22 +203,22 @@ function taxonomy_menu_block_form_options(&$form, &$form_state) {
   $form['#attached']['css'][] = drupal_get_path('module', 'taxonomy_menu_block') . '/taxonomy_menu_block_admin.css';
   $form['#attached']['js'][] = drupal_get_path('module', 'taxonomy_menu_block') . '/taxonomy_menu_block_admin.js';
 
-  // Get all taxonomy vocabularies
+  // Get all taxonomy vocabularies.
   $vocabs = array();
   foreach (taxonomy_vocabulary_get_names() as $vocab) {
     $vocabs[$vocab->vid] = $vocab->name;
   }
 
-  // Get default values for this block
+  // Get default values for this block.
   $delta = $form['delta']['#value'];
   $config = taxonomy_menu_block_get_config($delta);
 
-  // Override if we have already submitted our form (with Ajax callback for example)
+  // Override if we have already submitted our form (with Ajax callback for example).
   if (!empty($form_state['values'])) {
     $config = $form_state['values'];
   }
 
-  // Build the fixed parent dropdown list
+  // Build the fixed parent dropdown list.
   if ($config['vid']) {
     $parents_fixed = taxonomy_menu_block_get_parents_fixed($config['vid']);
   }
@@ -226,96 +227,98 @@ function taxonomy_menu_block_form_options(&$form, &$form_state) {
   }
 
   $form['settings']['wrapper-start'] = array(
-      '#markup' => '<div id="taxonomy-menu-block-wrapper">',
-      '#weight' => -20,
+    '#markup' => '<div id="taxonomy-menu-block-wrapper">',
+    '#weight' => -20,
   );
 
   $form['settings']['admin_title'] = array(
-      '#type' => 'textfield',
-      '#default_value' => $config['admin_title'],
-      '#title' => t('Administrative title'),
-      '#description' => t('This title will be used administratively to identify this block. If blank, "Taxonomy Menu Block" will be used'),
+    '#type' => 'textfield',
+    '#default_value' => $config['admin_title'],
+    '#title' => t('Administrative title'),
+    '#description' => t('This title will be used administratively to identify this block. If blank, "Taxonomy Menu Block" will be used'),
   );
 
   $form['settings']['vid'] = array(
-      '#type' => 'select',
-      '#title' => t('Select a Vocabulary'),
-      '#default_value' => $config['vid'],
-      '#options' => $vocabs,
-      '#ajax' => array(
-          'event' => 'change',
-          'callback' => 'taxonomy_menu_block_ajax_parent_callback',
-          'wrapper' => 'dropdown-fixed-parent',
-          'method' => 'replace',
-      ),
+    '#type' => 'select',
+    '#title' => t('Select a Vocabulary'),
+    '#default_value' => $config['vid'],
+    '#options' => $vocabs,
+    '#ajax' => array(
+      'event' => 'change',
+      'callback' => 'taxonomy_menu_block_ajax_parent_callback',
+      'wrapper' => 'dropdown-fixed-parent',
+      'method' => 'replace',
+    ),
   );
 
   $form['settings']['parent'] = array(
-      '#type' => 'select',
-      '#title' => t('Select a parent option'),
-      '#default_value' => $config['parent'],
-      '#options' => array(
-          '0' => t('Display whole tree'),
-          '1' => t('Fixed parent'),
-          '2' => t('Dynamic parent')
-      ),
+    '#type' => 'select',
+    '#title' => t('Select a parent option'),
+    '#default_value' => $config['parent'],
+    '#options' => array(
+      '0' => t('Display whole tree'),
+      '1' => t('Fixed parent'),
+      '2' => t('Dynamic parent')
+    ),
   );
 
   $form['settings']['parent_fixed'] = array(
-      '#type' => 'select',
-      '#title' => t('Select a parent'),
-      '#description' => t('Select a taxonomy term from your chosen vocabulary'),
-      '#prefix' => '<div id="dropdown-fixed-parent">',
-      '#suffix' => '</div>',
-      '#options' => $parents_fixed,
-      '#default_value' => $config['parent_fixed'],
+    '#type' => 'select',
+    '#title' => t('Select a parent'),
+    '#description' => t('Select a taxonomy term from your chosen vocabulary'),
+    '#prefix' => '<div id="dropdown-fixed-parent">',
+    '#suffix' => '</div>',
+    '#options' => $parents_fixed,
+    '#default_value' => $config['parent_fixed'],
   );
 
   $form['settings']['parent_dynamic'] = array(
-      '#type' => 'select',
-      '#title' => t('Select a parent level'),
-      '#description' => t('Choose a parent option for this tree. Default is 1, meaning the tree will show everything under the first level of your taxonomy tree. Make sure this is lower than your depth!'),
-      '#default_value' => $config['parent_dynamic'],
-      '#options' => array(
-          '1' => '1',
-          '2' => '2',
-          '3' => '3',
-          '4' => '4',
-          '5' => '5',
-          '6' => '6',
-          '7' => '7',
-          '8' => '8',
-          '9' => '9',
-          '0' => t('Follow active item'),
-      ),
+    '#type' => 'select',
+    '#title' => t('Select a parent level'),
+    '#description' => t('Choose a parent option for this tree. Default is 1, 
+      meaning the tree will show everything under the first level of your 
+      taxonomy tree. Make sure this is lower than your depth!'),
+    '#default_value' => $config['parent_dynamic'],
+    '#options' => array(
+      '1' => '1',
+      '2' => '2',
+      '3' => '3',
+      '4' => '4',
+      '5' => '5',
+      '6' => '6',
+      '7' => '7',
+      '8' => '8',
+      '9' => '9',
+      '0' => t('Follow active item'),
+    ),
   );
 
   $form['settings']['depth'] = array(
-      '#type' => 'select',
-      '#title' => t('Depth'),
-      '#description' => t('Specify the maximum depth of the taxonomy tree.'),
-      '#default_value' => $config['depth'],
-      '#options' => array(
-          '1' => '1',
-          '2' => '2',
-          '3' => '3',
-          '4' => '4',
-          '5' => '5',
-          '6' => '6',
-          '7' => '7',
-          '8' => '8',
-          '9' => '9',
-          '0' => t('Unlimited'),
-      ),
+    '#type' => 'select',
+    '#title' => t('Depth'),
+    '#description' => t('Specify the maximum depth of the taxonomy tree.'),
+    '#default_value' => $config['depth'],
+    '#options' => array(
+      '1' => '1',
+      '2' => '2',
+      '3' => '3',
+      '4' => '4',
+      '5' => '5',
+      '6' => '6',
+      '7' => '7',
+      '8' => '8',
+      '9' => '9',
+      '0' => t('Unlimited'),
+    ),
   );
 
   $form['settings']['wrapper-close'] = array(
-      '#markup' => '</div>'
+    '#markup' => '</div>'
   );
 }
 
 /**
- * Ajax callback function that returns parent_fixed
+ * Ajax callback function that returns parent_fixed.
  */
 function taxonomy_menu_block_ajax_parent_callback($form, $form_state) {
   return $form['settings']['parent_fixed'];
@@ -325,9 +328,9 @@ function taxonomy_menu_block_ajax_parent_callback($form, $form_state) {
  * Get parent tids
  *
  * @param $vid
- *    Vocabulary id
+ *   Vocabulary id.
  * @return $parents_fixed
- *    Array of terms of a certain vocabulary
+ *   Array of terms of a certain vocabulary.
  */
 function taxonomy_menu_block_get_parents_fixed($vid = NULL) {
 
@@ -345,7 +348,7 @@ function taxonomy_menu_block_get_parents_fixed($vid = NULL) {
 }
 
 /**
- * Function to get block name
+ * Function to get block name.
  */
 function taxonomy_menu_block_get_name($delta) {
   $name = t('Taxonomy Menu Block');
@@ -357,7 +360,7 @@ function taxonomy_menu_block_get_name($delta) {
 }
 
 /**
- * Function to clear all Taxonomy Menu Block caches for a certain vid
+ * Function to clear all Taxonomy Menu Block caches for a certain vid.
  */
 function _taxonomy_menu_block_clear_cache($form, &$form_state) {
   $vid = $form['#vocabulary']->vid;
