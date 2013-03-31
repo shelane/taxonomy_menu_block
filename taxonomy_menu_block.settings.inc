@@ -9,7 +9,8 @@
  * Menu callback: display the taxonomy menu block add form.
  */
 function taxonomy_menu_block_add_block_form($form, &$form_state) {
-  // Load the standard block add form which we will alter later with hook_form_alter()
+  // Load the standard block add form which we will alter later with 
+  // hook_form_alter().
   // We do not use hook_block_configure because we need Ajax callbacks.
   module_load_include('inc', 'block', 'block.admin');
   $form = block_admin_configure($form, $form_state, 'taxonomy_menu_block', NULL);
@@ -18,7 +19,7 @@ function taxonomy_menu_block_add_block_form($form, &$form_state) {
 }
 
 /**
- * Implements hook_form_alter()
+ * Implements hook_form_alter().
  */
 function _taxonomy_menu_block_form_alter(&$form, &$form_state, $form_id) {
   switch ($form_id) {
@@ -53,9 +54,9 @@ function _taxonomy_menu_block_form_alter(&$form, &$form_state, $form_id) {
 }
 
 /**
- * Submit function
- * @param type $form
- * @param array $form_state
+ * Submit function.
+ * @param $form
+ * @param $form_state
  */
 function taxonomy_menu_block_add_block_form_submit($form, &$form_state) {
   // Determine the delta of the new block.
@@ -275,8 +276,8 @@ function taxonomy_menu_block_form_options(&$form, &$form_state) {
   $form['settings']['parent_dynamic'] = array(
     '#type' => 'select',
     '#title' => t('Select a parent level'),
-    '#description' => t('Choose a parent option for this tree. Default is 1, 
-      meaning the tree will show everything under the first level of your 
+    '#description' => t('Choose a parent option for this tree. Default is 1,
+      meaning the tree will show everything under the first level of your
       taxonomy tree. Make sure this is lower than your depth!'),
     '#default_value' => $config['parent_dynamic'],
     '#options' => array(
@@ -329,7 +330,7 @@ function taxonomy_menu_block_ajax_parent_callback($form, $form_state) {
  *
  * @param $vid
  *   Vocabulary id.
- * @return $parents_fixed
+ * @return
  *   Array of terms of a certain vocabulary.
  */
 function taxonomy_menu_block_get_parents_fixed($vid = NULL) {
