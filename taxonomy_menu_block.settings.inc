@@ -9,7 +9,7 @@
  * Menu callback: display the taxonomy menu block add form.
  */
 function taxonomy_menu_block_add_block_form($form, &$form_state) {
-  // Load the standard block add form which we will alter later with 
+  // Load the standard block add form which we will alter later with
   // hook_form_alter().
   // We do not use hook_block_configure because we need Ajax callbacks.
   module_load_include('inc', 'block', 'block.admin');
@@ -26,12 +26,14 @@ function _taxonomy_menu_block_form_alter(&$form, &$form_state, $form_id) {
     case 'taxonomy_menu_block_add_block_form':
       taxonomy_menu_block_form_options($form, $form_state);
       break;
+
     case 'block_admin_configure':
       if ($form['module']['#value'] == 'taxonomy_menu_block') {
         taxonomy_menu_block_form_options($form, $form_state);
         $form['#submit'][] = 'taxonomy_menu_block_edit_block';
       }
       break;
+
     case 'block_admin_display_form':
       // Display a "delete" link next to each taxonomy menu block.
       foreach (variable_get('taxonomy_menu_block_ids', array()) as $delta) {
@@ -41,12 +43,15 @@ function _taxonomy_menu_block_form_alter(&$form, &$form_state, $form_id) {
           '#href' => 'admin/structure/block/delete-taxonomy-menu-block/' . $delta);
       }
       break;
+
     case 'taxonomy_overview_terms':
       $form['#submit'][] = 'taxonomy_menu_block_clear_cache';
       break;
+
     case 'taxonomy_form_term':
       $form['#submit'][] = 'taxonomy_menu_block_clear_cache';
       break;
+
     case 'taxonomy_form_vocabulary':
       $form['#submit'][] = 'taxonomy_menu_block_clear_cache';
       break;
@@ -55,8 +60,6 @@ function _taxonomy_menu_block_form_alter(&$form, &$form_state, $form_id) {
 
 /**
  * Submit function.
- * @param $form
- * @param $form_state
  */
 function taxonomy_menu_block_add_block_form_submit($form, &$form_state) {
   // Determine the delta of the new block.
@@ -71,8 +74,21 @@ function taxonomy_menu_block_add_block_form_submit($form, &$form_state) {
   // Save Taxonomy menu block options.
   taxonomy_menu_block_save_block($delta, $form_state['values']);
 
-  // Run the normal new block submission (borrowed from block_add_block_form_submit).
-  $query = db_insert('block')->fields(array('visibility', 'pages', 'custom', 'title', 'module', 'theme', 'region', 'status', 'weight', 'delta', 'cache'));
+  // Run the normal new block submission
+  // (borrowed from block_add_block_form_submit).
+  $query = db_insert('block')->fields(array(
+    'visibility',
+    'pages',
+    'custom',
+    'title',
+    'module',
+    'theme',
+    'region',
+    'status',
+    'weight',
+    'delta',
+    'cache'));
+  
   foreach (list_themes() as $key => $theme) {
     if ($theme->status) {
       $region = !empty($form_state['values']['regions'][$theme->name]) ? $form_state['values']['regions'][$theme->name] : BLOCK_REGION_NONE;
@@ -196,9 +212,8 @@ function _taxonomy_menu_block_block_info() {
 }
 
 /**
- * Function that will add Taxonomy Menu Block options to the standard Block add/edit form
- * @param type $form
- * @param type $form_state
+ * Function that will add Taxonomy Menu Block options to the standard 
+ * Block add/edit form.
  */
 function taxonomy_menu_block_form_options(&$form, &$form_state) {
   $form['#attached']['css'][] = drupal_get_path('module', 'taxonomy_menu_block') . '/taxonomy_menu_block_admin.css';
@@ -214,7 +229,8 @@ function taxonomy_menu_block_form_options(&$form, &$form_state) {
   $delta = $form['delta']['#value'];
   $config = taxonomy_menu_block_get_config($delta);
 
-  // Override if we have already submitted our form (with Ajax callback for example).
+  // Override if we have already submitted our form 
+  // (with Ajax callback for example).
   if (!empty($form_state['values'])) {
     $config = $form_state['values'];
   }
@@ -259,7 +275,7 @@ function taxonomy_menu_block_form_options(&$form, &$form_state) {
     '#options' => array(
       '0' => t('Display whole tree'),
       '1' => t('Fixed parent'),
-      '2' => t('Dynamic parent')
+      '2' => t('Dynamic parent'),
     ),
   );
 
@@ -326,11 +342,12 @@ function taxonomy_menu_block_ajax_parent_callback($form, $form_state) {
 }
 
 /**
- * Get parent tids
+ * Get parent tids.
  *
- * @param $vid
+ * @param int $vid
  *   Vocabulary id.
- * @return
+ * 
+ * @return array
  *   Array of terms of a certain vocabulary.
  */
 function taxonomy_menu_block_get_parents_fixed($vid = NULL) {

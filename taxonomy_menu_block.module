@@ -4,6 +4,7 @@
  * @file
  * This module allows you to make menu blocks out of your taxonomies in a very
  * performant way.
+ * 
  */
 // Off-load the following infrequently called hooks & functions to another file.
 function taxonomy_menu_block_form_alter(&$form, &$form_state, $form_id) {
@@ -96,8 +97,8 @@ function taxonomy_menu_block_block_view($delta = '') {
 /**
  * Function to build our tree.
  * 
- * @param $config
- *   array An array of configuration options that specifies how to build the
+ * @param array $config
+ *   An array of configuration options that specifies how to build the
  *   taxonomy tree
  *   - admin_title: Administrative title to use on the block admin page
  *   - vid: Taxonomy vocabulary id
@@ -110,9 +111,10 @@ function taxonomy_menu_block_block_view($delta = '') {
  *   - parent_dynamic: Determines at what depth we need to find the parent tid
  *     in case parent is set to 2
  *   - depth: Until what depth we need to render our tree.
- * @return
- *    Array that contains one value: content, which is the fully rendered HTML
- *    of our tree
+ * 
+ * @return array
+ *   Array that contains one value: content, which is the fully rendered HTML
+ *   of our tree
  */
 function taxonomy_menu_block_build($config) {
 
@@ -232,7 +234,7 @@ function taxonomy_menu_block_build($config) {
     $tree = taxonomy_menu_block_nest_tree($tree);
   }
 
-  // Theme tree
+  // Theme tree.
   $data['content'] = theme('taxonomy_menu_block', array('items' => $tree, 'config' => $config));
 
   return $data;
@@ -241,11 +243,12 @@ function taxonomy_menu_block_build($config) {
 /**
  * Returns the configuration for the requested block delta.
  *
- * @param $delta
- *   string The delta that uniquely identifies the block in the block system. If
+ * @param string $delta
+ *   The delta that uniquely identifies the block in the block system. If
  *   not specified, the default configuration will be returned.
- * @return
- *   array An associated array of configuration options.
+ * 
+ * @return array
+ *   An associated array of configuration options.
  */
 function taxonomy_menu_block_get_config($delta = NULL) {
   // Initialize.
@@ -278,7 +281,7 @@ function taxonomy_menu_block_get_tree($vid) {
     $lang = $language->language;
 
     // Get cache. Format of cache id: module_name-vid-language.
-    $cache = cache_get('taxonomy_menu_block' . '-' . $vid . '-' . $lang);
+    $cache = cache_get('taxonomy_menu_block-' . $vid . '-' . $lang);
 
     if ($cache) {
       $tree = $cache->data;
@@ -295,15 +298,15 @@ function taxonomy_menu_block_get_tree($vid) {
       }
 
       $tree = taxonomy_menu_block_structure_tree($data, $lang);
-      $cache = cache_set('taxonomy_menu_block' . '-' . $vid . '-' . $lang, $tree);
+      $cache = cache_set('taxonomy_menu_block-' . $vid . '-' . $lang, $tree);
     }
   }
   else {
-    $cache = cache_get('taxonomy_menu_block' . '-' . $vid);
+    $cache = cache_get('taxonomy_menu_block-' . $vid);
     if (!$cache) {
       $data = taxonomy_get_tree($vid);
       $tree = taxonomy_menu_block_structure_tree($data);
-      $cache = cache_set('taxonomy_menu_block' . '-' . $vid, $tree);
+      $cache = cache_set('taxonomy_menu_block-' . $vid, $tree);
     }
     else {
       $tree = $cache->data;
@@ -372,11 +375,11 @@ function taxonomy_menu_block_find_active_tid($tree, $vid) {
         $term_reference_field = $node->$term_reference_field;
         if (!empty($term_reference_field['und'])) {
           // Only the first value will be selected, also for fields that allow
-          // multiple values.
-          // It doesn't make sense to have more than one active trail/items in a menu.
+          // multiple values. It doesn't make sense to have more than one 
+          // active trail/items in a menu.
           $tid = $term_reference_field['und'][0]['tid'];
-          // Check if the term actually belongs to the vocabulary we need to display
-          // (node can have more than one term reference field).
+          // Check if the term actually belongs to the vocabulary we need to 
+          // display (node can have more than one term reference field).
           if (isset($tree[$tid])) {
             $active = $tid;
           }
@@ -398,9 +401,10 @@ function taxonomy_menu_block_find_active_tid($tree, $vid) {
 }
 
 /**
- * Add active trail
+ * Add active trail.
+ * 
  * Options:
- *  0 = not active. This has already been set as default in taxonomy_menu_block_get_tree()
+ *  0 = not active. Has been set as default in taxonomy_menu_block_get_tree()
  *  1 = active trail
  *  2 = active
  */
