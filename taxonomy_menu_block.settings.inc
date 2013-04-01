@@ -88,7 +88,7 @@ function taxonomy_menu_block_add_block_form_submit($form, &$form_state) {
     'weight',
     'delta',
     'cache'));
-  
+
   foreach (list_themes() as $key => $theme) {
     if ($theme->status) {
       $region = !empty($form_state['values']['regions'][$theme->name]) ? $form_state['values']['regions'][$theme->name] : BLOCK_REGION_NONE;
@@ -212,7 +212,9 @@ function _taxonomy_menu_block_block_info() {
 }
 
 /**
- * Function that will add Taxonomy Menu Block options to the standard 
+ * Expand normal Block add/edit form.
+ * 
+ * Function that will add Taxonomy Menu Block options to the standard
  * Block add/edit form.
  */
 function taxonomy_menu_block_form_options(&$form, &$form_state) {
@@ -229,7 +231,7 @@ function taxonomy_menu_block_form_options(&$form, &$form_state) {
   $delta = $form['delta']['#value'];
   $config = taxonomy_menu_block_get_config($delta);
 
-  // Override if we have already submitted our form 
+  // Override if we have already submitted our form
   // (with Ajax callback for example).
   if (!empty($form_state['values'])) {
     $config = $form_state['values'];
@@ -330,7 +332,7 @@ function taxonomy_menu_block_form_options(&$form, &$form_state) {
   );
 
   $form['settings']['wrapper-close'] = array(
-    '#markup' => '</div>'
+    '#markup' => '</div>',
   );
 }
 
@@ -346,7 +348,7 @@ function taxonomy_menu_block_ajax_parent_callback($form, $form_state) {
  *
  * @param int $vid
  *   Vocabulary id.
- * 
+ *
  * @return array
  *   Array of terms of a certain vocabulary.
  */

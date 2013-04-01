@@ -4,8 +4,8 @@
  * @file
  * This module allows you to make menu blocks out of your taxonomies in a very
  * performant way.
- * 
  */
+
 // Off-load the following infrequently called hooks & functions to another file.
 function taxonomy_menu_block_form_alter(&$form, &$form_state, $form_id) {
   module_load_include('inc', 'taxonomy_menu_block', 'taxonomy_menu_block.settings');
@@ -96,7 +96,7 @@ function taxonomy_menu_block_block_view($delta = '') {
 
 /**
  * Function to build our tree.
- * 
+ *
  * @param array $config
  *   An array of configuration options that specifies how to build the
  *   taxonomy tree
@@ -111,7 +111,7 @@ function taxonomy_menu_block_block_view($delta = '') {
  *   - parent_dynamic: Determines at what depth we need to find the parent tid
  *     in case parent is set to 2
  *   - depth: Until what depth we need to render our tree.
- * 
+ *
  * @return array
  *   Array that contains one value: content, which is the fully rendered HTML
  *   of our tree
@@ -246,7 +246,7 @@ function taxonomy_menu_block_build($config) {
  * @param string $delta
  *   The delta that uniquely identifies the block in the block system. If
  *   not specified, the default configuration will be returned.
- * 
+ *
  * @return array
  *   An associated array of configuration options.
  */
@@ -375,10 +375,10 @@ function taxonomy_menu_block_find_active_tid($tree, $vid) {
         $term_reference_field = $node->$term_reference_field;
         if (!empty($term_reference_field['und'])) {
           // Only the first value will be selected, also for fields that allow
-          // multiple values. It doesn't make sense to have more than one 
+          // multiple values. It doesn't make sense to have more than one
           // active trail/items in a menu.
           $tid = $term_reference_field['und'][0]['tid'];
-          // Check if the term actually belongs to the vocabulary we need to 
+          // Check if the term actually belongs to the vocabulary we need to
           // display (node can have more than one term reference field).
           if (isset($tree[$tid])) {
             $active = $tid;
@@ -402,7 +402,7 @@ function taxonomy_menu_block_find_active_tid($tree, $vid) {
 
 /**
  * Add active trail.
- * 
+ *
  * Options:
  *  0 = not active. Has been set as default in taxonomy_menu_block_get_tree()
  *  1 = active trail
