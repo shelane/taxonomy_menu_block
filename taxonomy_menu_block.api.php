@@ -44,9 +44,10 @@ function hook_taxonomy_tree_alter(&$tree, &$config) {
  * currently viewed term, on node pages the active tid is the value of any term
  * reference field (if any) that refers to the vocabulary we need to display.
  *
- * @param $tid integer
+ * @param integer $tid
  *   The currently active tid.
- * @param $config array
+ * 
+ * @param array $config
  *   An array containing configuration of current block.
  */
 function hook_active_tid_alter(&$tid, &$config) {
