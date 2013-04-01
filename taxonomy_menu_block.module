@@ -111,6 +111,8 @@ function taxonomy_menu_block_block_view($delta = '') {
  *   - parent_dynamic: Determines at what depth we need to find the parent tid
  *     in case parent is set to 2
  *   - depth: Until what depth we need to render our tree.
+ *   - home_link: Whether to add a link to the frontpage at the beginning of the
+ *     menu or not.
  *
  * @return array
  *   Array that contains one value: content, which is the fully rendered HTML
@@ -159,10 +161,8 @@ function taxonomy_menu_block_build($config) {
       $parent = $tid;
     }
 
-    // Since we know we have an active tid, no parent can only mean
-    // user didn't configure correctly.
+    // Since we know we have an active tid, we should have a parent.
     if (!$parent) {
-      drupal_set_message(t('Parent level or depth configured incorrectly'), 'error');
       return;
     }
   }
@@ -222,6 +222,22 @@ function taxonomy_menu_block_build($config) {
     return;
   }
 
+  // Add link to frontpage.
+  if ($config['home_link']) {
+    $home_link = array(
+      // Give it an impossible key so it doesn't get mistaken for a parent tid.
+      '-1' => array(
+        'name' => t('Home'),
+        'path' => '<front>',
+        'depth' => '0',
+        'parents' => array('0' => $parent ? $parent : '0'),
+        'active_trail' => drupal_is_front_page() ? '2' : '0',
+        ));
+
+    // Add to beginning of $tree array.
+    $tree = $home_link + $tree;
+  }
+
   // Let other modules alter the taxonomy tree data.
   drupal_alter('taxonomy_menu_block_tree', $tree, $config);
 
@@ -260,6 +276,7 @@ function taxonomy_menu_block_get_config($delta = NULL) {
     'parent_fixed' => 0,
     'parent_dynamic' => 1,
     'depth' => 0,
+    'home_link' => 0,
   );
 
   // Get the block configuration options.
@@ -459,8 +476,7 @@ function theme_taxonomy_menu_block($variables) {
   foreach ($tree as $tid => $term) {
     $i++;
     // Add classes.
-    $attributes['class'] = array();
-    $classes = '';
+    $attributes = array();
     if ($i == 1) {
       $attributes['class'][] = 'first';
     }
@@ -473,14 +489,10 @@ function theme_taxonomy_menu_block($variables) {
     if ($term['active_trail'] == '2') {
       $attributes['class'][] = 'active';
     }
-    // If we have classes, flatten to a string.
-    if (!empty($attributes['class'])) {
-      $classes = drupal_attributes($attributes);
-    }
 
     // Set alias option to true so we don't have to query for the alias every
     // time, as this is cached anyway.
-    $output .= '<li' . $classes . '>' . l($term['name'], $term['path'], $options = array('alias' => TRUE));
+    $output .= '<li' . drupal_attributes($attributes) . '>' . l($term['name'], $term['path'], $options = array('alias' => TRUE));
     if (!empty($term['children'])) {
       $output .= theme_taxonomy_menu_block(array('items' => $term['children'], 'config' => $config));
     }

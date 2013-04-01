@@ -138,6 +138,7 @@ function taxonomy_menu_block_save_block($delta = '', $values = array()) {
     $taxonomy_menu_block['parent_fixed'] = $values['parent_fixed'];
     $taxonomy_menu_block['parent_dynamic'] = $values['parent_dynamic'];
     $taxonomy_menu_block['depth'] = $values['depth'];
+    $taxonomy_menu_block['home_link'] = $values['home_link'];
 
     $taxonomy_menu_block = serialize($taxonomy_menu_block);
     variable_set("taxonomy_menu_block_{$delta}", $taxonomy_menu_block);
@@ -213,7 +214,7 @@ function _taxonomy_menu_block_block_info() {
 
 /**
  * Expand normal Block add/edit form.
- * 
+ *
  * Function that will add Taxonomy Menu Block options to the standard
  * Block add/edit form.
  */
@@ -329,6 +330,20 @@ function taxonomy_menu_block_form_options(&$form, &$form_state) {
       '9' => '9',
       '0' => t('Unlimited'),
     ),
+  );
+
+  $form['settings']['extras'] = array(
+    '#type' => 'fieldset',
+    '#title' => t('Extras'),
+    '#collapsible' => TRUE,
+    '#collapsed' => TRUE,
+  );
+
+  $form['settings']['extras']['home_link'] = array(
+    '#type' => 'checkbox',
+    '#title' => t('Add Home link'),
+    '#description' => t('Adds a Home-link (link to frontpage) at the beginning of the menu.'),
+    '#default_value' => $config['home_link'],
   );
 
   $form['settings']['wrapper-close'] = array(
