@@ -140,7 +140,6 @@ function taxonomy_menu_block_save_block($delta = '', $values = array()) {
     $taxonomy_menu_block['depth'] = $values['depth'];
     $taxonomy_menu_block['home_link'] = $values['home_link'];
 
-    $taxonomy_menu_block = serialize($taxonomy_menu_block);
     variable_set("taxonomy_menu_block_{$delta}", $taxonomy_menu_block);
   }
 }

@@ -7,21 +7,34 @@
  */
 
 // Off-load the following infrequently called hooks & functions to another file.
+
+/**
+ * Implements hook_form_alter().
+ */
 function taxonomy_menu_block_form_alter(&$form, &$form_state, $form_id) {
   module_load_include('inc', 'taxonomy_menu_block', 'taxonomy_menu_block.settings');
   return _taxonomy_menu_block_form_alter($form, $form_state, $form_id);
 }
 
+/**
+ * Implements hook_block_info().
+ */
 function taxonomy_menu_block_block_info() {
   module_load_include('inc', 'taxonomy_menu_block', 'taxonomy_menu_block.settings');
   return _taxonomy_menu_block_block_info();
 }
 
+/**
+ * Edit function.
+ */
 function taxonomy_menu_block_edit_block($form, &$form_state) {
   module_load_include('inc', 'taxonomy_menu_block', 'taxonomy_menu_block.settings');
   return _taxonomy_menu_block_edit_block($form, $form_state);
 }
 
+/**
+ * Function to clear all Taxonomy Menu Block caches for a certain vid.
+ */
 function taxonomy_menu_block_clear_cache($form, &$form_state) {
   module_load_include('inc', 'taxonomy_menu_block', 'taxonomy_menu_block.settings');
   return _taxonomy_menu_block_clear_cache($form, $form_state);
@@ -282,8 +295,7 @@ function taxonomy_menu_block_get_config($delta = NULL) {
 
   // Get the block configuration options.
   if ($delta) {
-    $taxonomy_menu_block = variable_get("taxonomy_menu_block_{$delta}", array());
-    $config = unserialize($taxonomy_menu_block);
+    $config = variable_get("taxonomy_menu_block_{$delta}", array());
   }
 
   return $config;
