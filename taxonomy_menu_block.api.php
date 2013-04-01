@@ -11,15 +11,15 @@
  * Alter data of the taxonomy tree before the tree gets nested and sent to the
  * theme function.
  *
- * @param $tree array
+ * @param array $tree
  *   A flat array of taxonomy terms, keyed by their tid. It's very important
  *   the keys of this array never get reset, as they are used for nesting the
  *   tree, later in the Taxonomy Menu Block module.
  *   The order of the terms is still the same as when returned by the
  *   taxonomy_get_tree() function.
- * @param $config array
- *   An array containing configuration of current block.
  * 
+ * @param array $config
+ *   An array containing configuration of current block.
  */
 function hook_taxonomy_tree_alter(&$tree, &$config) {
   // Add the number of nodes associated with each term.
