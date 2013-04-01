@@ -232,7 +232,8 @@ function taxonomy_menu_block_build($config) {
         'depth' => '0',
         'parents' => array('0' => $parent ? $parent : '0'),
         'active_trail' => drupal_is_front_page() ? '2' : '0',
-        ));
+        )
+      );
 
     // Add to beginning of $tree array.
     $tree = $home_link + $tree;
