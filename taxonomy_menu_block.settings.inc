@@ -19,46 +19,6 @@ function taxonomy_menu_block_add_block_form($form, &$form_state) {
 }
 
 /**
- * Implements hook_form_alter().
- */
-function _taxonomy_menu_block_form_alter(&$form, &$form_state, $form_id) {
-  switch ($form_id) {
-    case 'taxonomy_menu_block_add_block_form':
-      taxonomy_menu_block_form_options($form, $form_state);
-      break;
-
-    case 'block_admin_configure':
-      if ($form['module']['#value'] == 'taxonomy_menu_block') {
-        taxonomy_menu_block_form_options($form, $form_state);
-        $form['#submit'][] = 'taxonomy_menu_block_edit_block';
-      }
-      break;
-
-    case 'block_admin_display_form':
-      // Display a "delete" link next to each taxonomy menu block.
-      foreach (variable_get('taxonomy_menu_block_ids', array()) as $delta) {
-        $form['blocks']['taxonomy_menu_block_' . $delta]['delete'] = array(
-          '#type' => 'link',
-          '#title' => t('delete'),
-          '#href' => 'admin/structure/block/delete-taxonomy-menu-block/' . $delta);
-      }
-      break;
-
-    case 'taxonomy_overview_terms':
-      $form['#submit'][] = 'taxonomy_menu_block_clear_cache';
-      break;
-
-    case 'taxonomy_form_term':
-      $form['#submit'][] = 'taxonomy_menu_block_clear_cache';
-      break;
-
-    case 'taxonomy_form_vocabulary':
-      $form['#submit'][] = 'taxonomy_menu_block_clear_cache';
-      break;
-  }
-}
-
-/**
  * Submit function.
  */
 function taxonomy_menu_block_add_block_form_submit($form, &$form_state) {
@@ -217,7 +177,7 @@ function _taxonomy_menu_block_block_info() {
  * Function that will add Taxonomy Menu Block options to the standard
  * Block add/edit form.
  */
-function taxonomy_menu_block_form_options(&$form, &$form_state) {
+function _taxonomy_menu_block_form_options(&$form, &$form_state) {
   $form['#attached']['css'][] = drupal_get_path('module', 'taxonomy_menu_block') . '/taxonomy_menu_block_admin.css';
   $form['#attached']['js'][] = drupal_get_path('module', 'taxonomy_menu_block') . '/taxonomy_menu_block_admin.js';
 
