@@ -2,44 +2,52 @@
 
 /**
  * @file
- * This module allows you to make menu blocks out of your taxonomies in a very
- * performant way.
+ * Taxonomy Menu Block module allows you to make menu blocks out of your
+ * taxonomies in a very performant way.
  */
 
 /**
- * Expand normal Block add/edit form.
+ * Implements hook_menu().
  */
-function taxonomy_menu_block_form_options(&$form, &$form_state) {
-  // Off-load to another file.
-  module_load_include('inc', 'taxonomy_menu_block', 'taxonomy_menu_block.settings');
-  return _taxonomy_menu_block_form_options($form, $form_state);
-}
+function taxonomy_menu_block_menu() {
+  // Add block form.
+  $items['admin/structure/block/add-taxonomy-menu-block'] = array(
+    'title' => 'Add taxonomy menu block',
+    'description' => 'Add a new taxonomy menu block.',
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('taxonomy_menu_block_add_block_form'),
+    'access arguments' => array('administer blocks'),
+    'type' => MENU_LOCAL_ACTION,
+    'file' => 'taxonomy_menu_block.admin.inc',
+  );
 
-/**
- * Implements hook_block_info().
- */
-function taxonomy_menu_block_block_info() {
-  // Off-load to another file.
-  module_load_include('inc', 'taxonomy_menu_block', 'taxonomy_menu_block.settings');
-  return _taxonomy_menu_block_block_info();
-}
+  // Display "add taxonomy menu block" link on block overview page.
+  $default_theme = variable_get('theme_default', 'bartik');
+  foreach (list_themes() as $key => $theme) {
+    if ($key != $default_theme) {
+      $items['admin/structure/block/list/' . $key . '/add-taxonomy-menu-block'] = array(
+        'title' => 'Add taxonomy menu block',
+        'description' => 'Add a new taxonomy menu block.',
+        'page callback' => 'drupal_get_form',
+        'page arguments' => array('taxonomy_menu_block_add_block_form'),
+        'access arguments' => array('administer blocks'),
+        'type' => MENU_LOCAL_ACTION,
+        'file' => 'taxonomy_menu_block.admin.inc',
+      );
+    }
+  }
 
-/**
- * Edit function.
- */
-function taxonomy_menu_block_edit_block($form, &$form_state) {
-  // Off-load to another file.
-  module_load_include('inc', 'taxonomy_menu_block', 'taxonomy_menu_block.settings');
-  return _taxonomy_menu_block_edit_block($form, $form_state);
-}
+  // Delete block.
+  $items['admin/structure/block/delete-taxonomy-menu-block'] = array(
+    'title' => 'Delete taxonomy menu block',
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('taxonomy_menu_block_delete'),
+    'access arguments' => array('administer blocks'),
+    'type' => MENU_CALLBACK,
+    'file' => 'taxonomy_menu_block.admin.inc',
+  );
 
-/**
- * Function to clear all Taxonomy Menu Block caches for a certain vid.
- */
-function taxonomy_menu_block_clear_cache($form, &$form_state) {
-  // Off-load to another file.
-  module_load_include('inc', 'taxonomy_menu_block', 'taxonomy_menu_block.settings');
-  return _taxonomy_menu_block_clear_cache($form, $form_state);
+  return $items;
 }
 
 /**
@@ -55,6 +63,7 @@ function taxonomy_menu_block_form_alter(&$form, &$form_state, $form_id) {
       if ($form['module']['#value'] == 'taxonomy_menu_block') {
         taxonomy_menu_block_form_options($form, $form_state);
         $form['#submit'][] = 'taxonomy_menu_block_edit_block';
+        $form['#validate'][] = 'taxonomy_menu_block_add_block_form_validate';
       }
       break;
 
@@ -67,63 +76,7 @@ function taxonomy_menu_block_form_alter(&$form, &$form_state, $form_id) {
           '#href' => 'admin/structure/block/delete-taxonomy-menu-block/' . $delta);
       }
       break;
-
-    case 'taxonomy_overview_terms':
-      $form['#submit'][] = 'taxonomy_menu_block_clear_cache';
-      break;
-
-    case 'taxonomy_form_term':
-      $form['#submit'][] = 'taxonomy_menu_block_clear_cache';
-      break;
-
-    case 'taxonomy_form_vocabulary':
-      $form['#submit'][] = 'taxonomy_menu_block_clear_cache';
-      break;
   }
-}
-
-/**
- * Implements hook_menu().
- */
-function taxonomy_menu_block_menu() {
-  // Add block form.
-  $items['admin/structure/block/add-taxonomy-menu-block'] = array(
-    'title' => 'Add taxonomy menu block',
-    'description' => 'Add a new taxonomy menu block.',
-    'page callback' => 'drupal_get_form',
-    'page arguments' => array('taxonomy_menu_block_add_block_form'),
-    'access arguments' => array('administer blocks'),
-    'type' => MENU_LOCAL_ACTION,
-    'file' => 'taxonomy_menu_block.settings.inc',
-  );
-
-  // Display "add taxonomy menu block" link on block overview page.
-  $default_theme = variable_get('theme_default', 'bartik');
-  foreach (list_themes() as $key => $theme) {
-    if ($key != $default_theme) {
-      $items['admin/structure/block/list/' . $key . '/add-taxonomy-menu-block'] = array(
-        'title' => 'Add taxonomy menu block',
-        'description' => 'Add a new taxonomy menu block.',
-        'page callback' => 'drupal_get_form',
-        'page arguments' => array('taxonomy_menu_block_add_block_form'),
-        'access arguments' => array('administer blocks'),
-        'type' => MENU_LOCAL_ACTION,
-        'file' => 'taxonomy_menu_block.settings.inc',
-      );
-    }
-  }
-
-  // Delete block.
-  $items['admin/structure/block/delete-taxonomy-menu-block'] = array(
-    'title' => 'Delete taxonomy menu block',
-    'page callback' => 'drupal_get_form',
-    'page arguments' => array('taxonomy_menu_block_delete'),
-    'access arguments' => array('administer blocks'),
-    'type' => MENU_CALLBACK,
-    'file' => 'taxonomy_menu_block.settings.inc',
-  );
-
-  return $items;
 }
 
 /**
@@ -138,6 +91,22 @@ function taxonomy_menu_block_theme() {
       ),
     ),
   );
+}
+
+/**
+ * Implements hook_block_info().
+ */
+function taxonomy_menu_block_block_info() {
+  $blocks = array();
+  $deltas = variable_get('taxonomy_menu_block_ids', array());
+
+  foreach ($deltas as $delta) {
+    $name = taxonomy_menu_block_get_name($delta);
+    $blocks[$delta]['info'] = $name;
+    $blocks[$delta]['cache'] = DRUPAL_CACHE_PER_PAGE;
+  }
+
+  return $blocks;
 }
 
 /**
@@ -341,6 +310,18 @@ function taxonomy_menu_block_get_config($delta = NULL) {
   }
 
   return $config;
+}
+
+/**
+ * Function to get block name.
+ */
+function taxonomy_menu_block_get_name($delta) {
+  $name = t('Taxonomy Menu Block');
+  $config = taxonomy_menu_block_get_config($delta);
+  if (!empty($config['admin_title'])) {
+    $name = $name . ' (' . $config['admin_title'] . ')';
+  }
+  return $name;
 }
 
 /**
@@ -556,4 +537,59 @@ function theme_taxonomy_menu_block($variables) {
   $output .= '</ul>';
 
   return $output;
+}
+
+/**
+ * Implements hook_entity_presave().
+ */
+function taxonomy_menu_block_entity_presave($entity, $type) {
+  switch ($type) {
+    case 'taxonomy_vocabulary':
+    case 'taxonomy_term':
+      // Clear cache for this vocabulary.
+      $cache_name = 'taxonomy_menu_block-' . $entity->vid;
+      db_query("DELETE FROM {cache} WHERE cid LIKE :block", array(':block' => db_like($cache_name) . '%'));
+      break;
+  }
+}
+
+/**
+ * Implements hook_entity_delete().
+ */
+function taxonomy_menu_block_entity_delete($entity, $type) {
+  switch ($type) {
+    case 'taxonomy_vocabulary':
+    case 'taxonomy_term':
+      // Clear cache for this vocabulary.
+      $cache_name = 'taxonomy_menu_block-' . $entity->vid;
+      db_query("DELETE FROM {cache} WHERE cid LIKE :block", array(':block' => db_like($cache_name) . '%'));
+      break;
+  }
+}
+
+/**
+ * Expand normal Block add/edit form.
+ */
+function taxonomy_menu_block_form_options(&$form, &$form_state) {
+  // Off-load to another file to keep back-end functions in one place.
+  module_load_include('inc', 'taxonomy_menu_block', 'taxonomy_menu_block.admin');
+  return _taxonomy_menu_block_form_options($form, $form_state);
+}
+
+/**
+ * Edit function.
+ */
+function taxonomy_menu_block_edit_block($form, &$form_state) {
+  // Off-load to another file to keep back-end functions in one place.
+  module_load_include('inc', 'taxonomy_menu_block', 'taxonomy_menu_block.admin');
+  return _taxonomy_menu_block_edit_block($form, $form_state);
+}
+
+/**
+ * Validate function.
+ */
+function taxonomy_menu_block_add_block_form_validate($form, &$form_state) {
+  // Off-load to another file to keep back-end functions in one place.
+  module_load_include('inc', 'taxonomy_menu_block', 'taxonomy_menu_block.admin');
+  return _taxonomy_menu_block_add_block_form_validate($form, $form_state);
 }

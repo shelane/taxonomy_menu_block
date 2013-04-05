@@ -19,6 +19,39 @@ function taxonomy_menu_block_add_block_form($form, &$form_state) {
 }
 
 /**
+ * Edit function.
+ */
+function _taxonomy_menu_block_edit_block($form, &$form_state) {
+  taxonomy_menu_block_save_block($form['delta']['#value'], $form_state['values']);
+}
+
+/**
+ * Validate function.
+ */
+function _taxonomy_menu_block_add_block_form_validate($form, &$form_state) {
+  $values = $form_state['values'];
+
+  switch ($values['parent']) {
+    case '2':
+      // Depth must be higher than parent level
+      if ($values['depth'] != '0' && $values['parent_dynamic'] >= $values['depth']) {
+        form_set_error('depth', t('Depth must be higher than parent level.'));
+      }
+      break;
+
+    case '1':
+      // Depth must be higher than the depth of Fixed parent.
+      // First get the depth of the term.
+      $term = taxonomy_menu_block_get_tree($values['vid']);
+      $term = $term[$values['parent_fixed']];
+      if ($values['depth'] != '0' && ($term['depth'] + 1) >= $values['depth']) {
+        form_set_error('depth', t('Depth must be higher than the depth of your selected Fixed parent.'));
+      }
+      break;
+  }
+}
+
+/**
  * Submit function.
  */
 function taxonomy_menu_block_add_block_form_submit($form, &$form_state) {
@@ -105,13 +138,6 @@ function taxonomy_menu_block_save_block($delta = '', $values = array()) {
 }
 
 /**
- * Edit function.
- */
-function _taxonomy_menu_block_edit_block($form, &$form_state) {
-  taxonomy_menu_block_save_block($form['delta']['#value'], $form_state['values']);
-}
-
-/**
  * Menu callback: confirm deletion of taxonomy menu blocks.
  */
 function taxonomy_menu_block_delete($form, &$form_state, $delta = 0) {
@@ -153,22 +179,6 @@ function taxonomy_menu_block_delete_submit($form, &$form_state) {
   $form_state['redirect'] = 'admin/structure/block';
 
   return;
-}
-
-/**
- * Implements hook_block_info().
- */
-function _taxonomy_menu_block_block_info() {
-  $blocks = array();
-  $deltas = variable_get('taxonomy_menu_block_ids', array());
-
-  foreach ($deltas as $delta) {
-    $name = taxonomy_menu_block_get_name($delta);
-    $blocks[$delta]['info'] = $name;
-    $blocks[$delta]['cache'] = DRUPAL_CACHE_PER_PAGE;
-  }
-
-  return $blocks;
 }
 
 /**
@@ -339,26 +349,4 @@ function taxonomy_menu_block_get_parents_fixed($vid = NULL) {
   }
 
   return $parents_fixed;
-}
-
-/**
- * Function to get block name.
- */
-function taxonomy_menu_block_get_name($delta) {
-  $name = t('Taxonomy Menu Block');
-  $config = taxonomy_menu_block_get_config($delta);
-  if (!empty($config['admin_title'])) {
-    $name = $name . ' (' . $config['admin_title'] . ')';
-  }
-  return $name;
-}
-
-/**
- * Function to clear all Taxonomy Menu Block caches for a certain vid.
- */
-function _taxonomy_menu_block_clear_cache($form, &$form_state) {
-  $vid = $form['#vocabulary']->vid;
-  $cache_name = 'taxonomy_menu_block-' . $vid;
-
-  db_query("DELETE FROM {cache} WHERE cid LIKE :block", array(':block' => db_like($cache_name) . '%'));
 }
