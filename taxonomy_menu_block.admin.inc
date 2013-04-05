@@ -33,7 +33,7 @@ function _taxonomy_menu_block_add_block_form_validate($form, &$form_state) {
 
   switch ($values['parent']) {
     case '2':
-      // Depth must be higher than parent level
+      // Depth must be higher than parent level.
       if ($values['depth'] != '0' && $values['parent_dynamic'] >= $values['depth']) {
         form_set_error('depth', t('Depth must be higher than parent level.'));
       }
