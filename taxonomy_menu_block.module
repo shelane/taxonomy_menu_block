@@ -540,9 +540,9 @@ function theme_taxonomy_menu_block($variables) {
 }
 
 /**
- * Implements hook_entity_presave().
+ * Implements hook_entity_update().
  */
-function taxonomy_menu_block_entity_presave($entity, $type) {
+function taxonomy_menu_block_entity_update($entity, $type) {
   switch ($type) {
     case 'taxonomy_vocabulary':
     case 'taxonomy_term':
