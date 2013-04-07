@@ -23,6 +23,7 @@
  */
 function hook_taxonomy_tree_alter(&$tree, &$config) {
   // Add the number of nodes associated with each term.
+  // Be careful, this can cause bad performance.
   foreach ($tree as $tid => $term) {
     $nodes = db_select('taxonomy_index', 'ti')
         ->condition('tid', (int) $tid)
