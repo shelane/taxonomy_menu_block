@@ -241,6 +241,29 @@ function taxonomy_menu_block_build($config) {
     }
   }
 
+  // If we have to add the number of nodes attached to each term.
+  if ($config['nodes']) {
+    $tids = array_keys($tree);
+
+    $count = taxonomy_menu_block_get_nodes($tids, $config['vid']);
+
+    // Loop over tree and assign the number of nodes to each term.
+    // Hide (unset) if need be.
+    foreach ($tree as $tid => $term) {
+      if (isset($count[$tid])) {
+        $tree[$tid]['nodes'] = $count[$tid];
+      }
+      elseif (!$config[('hide_empty')]) {
+        $tree[$tid]['nodes'] = 0;
+      }
+      else {
+        // this needs to be checked as it fucks with the nesting process
+        // unset($tree[$tid]);
+        $tree[$tid]['nodes'] = -1;
+      }
+    }
+  }
+
   // Last check. If we for some reason still don't have a built tree, bail.
   if (empty($tree)) {
     return;
@@ -275,6 +298,7 @@ function taxonomy_menu_block_build($config) {
     $tree = taxonomy_menu_block_nest_tree($tree);
   }
 
+  // loop over tree here to unset hidden terms?
   // Theme tree.
   $data['content'] = theme('taxonomy_menu_block', array('items' => $tree, 'config' => $config));
 
@@ -302,6 +326,8 @@ function taxonomy_menu_block_get_config($delta = NULL) {
     'parent_dynamic' => 1,
     'depth' => 0,
     'home_link' => 0,
+    'nodes' => 0,
+    'hide_empty' => 0,
   );
 
   // Get the block configuration options.
@@ -328,7 +354,6 @@ function taxonomy_menu_block_get_name($delta) {
  * Generate taxonomy tree, taking into account i18n.
  */
 function taxonomy_menu_block_get_tree($vid) {
-
   if (module_exists('i18n_taxonomy')) {
     global $language;
     $lang = $language->language;
@@ -387,6 +412,7 @@ function taxonomy_menu_block_structure_tree($data, $lang = NULL) {
       $branch['depth'] = $term->depth;
       $branch['parents'] = $term->parents;
       $branch['active_trail'] = '0';
+
       $tree[$term->tid] = $branch;
     }
   }
@@ -479,6 +505,61 @@ function taxonomy_menu_block_add_active_trail($tree, $tid = NULL) {
 }
 
 /**
+ * Get the number of nodes attached to the terms of a vocabulary.
+ * 
+ * We try to keep this as performant as possible by doing one query for all the
+ * terms in a vocabulary, which we will then cache.
+ */
+function taxonomy_menu_block_get_nodes($tids, $vid) {
+  $nodes = array();
+
+  // First check if our vocabulary is set to localize. If this is the case
+  // nodes in different languages will be attached to the same tid.
+  if (module_exists('i18n_taxonomy') && i18n_taxonomy_vocabulary_mode($vid) == 1) {
+    global $language;
+    $lang = $language->language;
+
+    // First check if we have the result in cache already.
+    $cache = cache_get('taxonomy_menu_block-' . $vid . '-nodes-' . $lang);
+
+    if ($cache) {
+      $nodes = $cache->data;
+    }
+    else {
+      $nodes = db_query("
+      SELECT t.tid, count(*) 
+      FROM {taxonomy_index} t 
+      INNER JOIN {node} n 
+      ON t.nid = n.nid 
+      WHERE t.tid IN (:tids) 
+      AND n.language = :lang 
+      GROUP BY t.tid", array(':tids' => $tids, ':lang' => $lang));
+
+      $nodes = $nodes->fetchAllKeyed();
+      
+      $cache = cache_set('taxonomy_menu_block-' . $vid . '-nodes-' . $lang, $nodes);
+    }
+  }
+  else {
+    $cache = cache_get('taxonomy_menu_block-' . $vid . '-nodes');
+
+    if ($cache) {
+      $nodes = $cache->data;
+    }
+    else {
+      // Here we don't need to take language in account. Every term has its own
+      // tid.
+      $nodes = db_query("SELECT tid, count(*) FROM {taxonomy_index} WHERE tid IN (:tids) GROUP BY tid", array(':tids' => $tids));
+      $nodes = $nodes->fetchAllKeyed();
+
+      $cache = cache_set('taxonomy_menu_block-' . $vid . '-nodes', $nodes);
+    }
+  }
+
+  return $nodes;
+}
+
+/**
  * Nest tree.
  */
 function taxonomy_menu_block_nest_tree($tree, $root = '0') {
@@ -526,9 +607,15 @@ function theme_taxonomy_menu_block($variables) {
       $attributes['class'][] = 'active';
     }
 
+    // Alter link text if we have to display the nodes attached.
+    $name = $term['name'];
+    if ($config['nodes']) {
+      $name = $name . ' (' . $term['nodes'] . ')';
+    }
+
     // Set alias option to true so we don't have to query for the alias every
     // time, as this is cached anyway.
-    $output .= '<li' . drupal_attributes($attributes) . '>' . l($term['name'], $term['path'], $options = array('alias' => TRUE));
+    $output .= '<li' . drupal_attributes($attributes) . '>' . l($name, $term['path'], $options = array('alias' => TRUE));
     if (!empty($term['children'])) {
       $output .= theme_taxonomy_menu_block(array('items' => $term['children'], 'config' => $config));
     }
