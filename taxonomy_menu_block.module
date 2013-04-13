@@ -244,22 +244,44 @@ function taxonomy_menu_block_build($config) {
   // If we have to add the number of nodes attached to each term.
   if ($config['nodes']) {
     $tids = array_keys($tree);
-
-    $count = taxonomy_menu_block_get_nodes($tids, $config['vid']);
+    $nodes_aggregation = array();
+    
+    $nodes = taxonomy_menu_block_get_nodes($tids, $config['vid']);
 
     // Loop over tree and assign the number of nodes to each term.
-    // Hide (unset) if need be.
     foreach ($tree as $tid => $term) {
-      if (isset($count[$tid])) {
-        $tree[$tid]['nodes'] = $count[$tid];
-      }
-      elseif (!$config[('hide_empty')]) {
-        $tree[$tid]['nodes'] = 0;
+      if (isset($nodes[$tid])) {
+        $tree[$tid]['nodes'] = $nodes[$tid];
+        
+        // If node aggregation is required create a new array where we keep,
+        // per parent, the node count of their children.
+        if ($config['nodes_aggregation'] && $term['parents'][0] != '0') {
+          $parent_tid = $term['parents'][0];
+          $count = 0;
+          if (isset($nodes_aggregation[$parent_tid])) {
+            $count = $count + $nodes_aggregation[$parent_tid];
+          }
+          $nodes_aggregation[$parent_tid] = $count + $nodes[$tid];
+        }
       }
       else {
+        $tree[$tid]['nodes'] = 0;
+      }
+//      elseif (!$config[('hide_empty')]) {
+//        $tree[$tid]['nodes'] = 0;
+//      }
+//      else {
         // this needs to be checked as it fucks with the nesting process
         // unset($tree[$tid]);
-        $tree[$tid]['nodes'] = -1;
+//        $tree[$tid]['nodes'] = -1;
+//      }
+    }
+    
+    // Now we still need to add the children node count to the parent node
+    // count.
+    if ($config['nodes_aggregation'] && !empty($nodes_aggregation)) {
+      foreach ($nodes_aggregation as $tid => $aggregation) {
+        $tree[$tid]['nodes'] = $tree[$tid]['nodes'] + $aggregation;
       }
     }
   }
@@ -298,7 +320,6 @@ function taxonomy_menu_block_build($config) {
     $tree = taxonomy_menu_block_nest_tree($tree);
   }
 
-  // loop over tree here to unset hidden terms?
   // Theme tree.
   $data['content'] = theme('taxonomy_menu_block', array('items' => $tree, 'config' => $config));
 
@@ -327,7 +348,8 @@ function taxonomy_menu_block_get_config($delta = NULL) {
     'depth' => 0,
     'home_link' => 0,
     'nodes' => 0,
-    'hide_empty' => 0,
+    'nodes_aggregation' => 0,
+    //'hide_empty' => 0,
   );
 
   // Get the block configuration options.
@@ -608,14 +630,14 @@ function theme_taxonomy_menu_block($variables) {
     }
 
     // Alter link text if we have to display the nodes attached.
-    $name = $term['name'];
-    if ($config['nodes']) {
-      $name = $name . ' (' . $term['nodes'] . ')';
+    // Not for the home link, if it's there.
+    if ($config['nodes'] && $tid > '0') {
+      $term['name'] = $term['name'] . ' (' . $term['nodes'] . ')';
     }
 
     // Set alias option to true so we don't have to query for the alias every
     // time, as this is cached anyway.
-    $output .= '<li' . drupal_attributes($attributes) . '>' . l($name, $term['path'], $options = array('alias' => TRUE));
+    $output .= '<li' . drupal_attributes($attributes) . '>' . l($term['name'], $term['path'], $options = array('alias' => TRUE));
     if (!empty($term['children'])) {
       $output .= theme_taxonomy_menu_block(array('items' => $term['children'], 'config' => $config));
     }

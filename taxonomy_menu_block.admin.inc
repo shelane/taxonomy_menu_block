@@ -133,7 +133,8 @@ function taxonomy_menu_block_save_block($delta = '', $values = array()) {
     $taxonomy_menu_block['depth'] = $values['depth'];
     $taxonomy_menu_block['home_link'] = $values['home_link'];
     $taxonomy_menu_block['nodes'] = $values['nodes'];
-    $taxonomy_menu_block['hide_empty'] = $values['hide_empty'];
+    $taxonomy_menu_block['nodes_aggregation'] = $values['nodes_aggregation'];
+    //$taxonomy_menu_block['hide_empty'] = $values['hide_empty'];
 
     variable_set("taxonomy_menu_block_{$delta}", $taxonomy_menu_block);
   }
@@ -266,8 +267,7 @@ function _taxonomy_menu_block_form_options(&$form, &$form_state) {
   $form['settings']['parent_dynamic'] = array(
     '#type' => 'select',
     '#title' => t('Select a parent level'),
-    '#description' => t('Choose a parent option for this tree. Default is 1,
-      meaning the tree will show everything under the first level of your
+    '#description' => t('Choose a parent option for this tree. Default is 1, meaning the tree will show everything under the first level of your
       taxonomy tree. Make sure this is lower than your depth!'),
     '#default_value' => $config['parent_dynamic'],
     '#options' => array(
@@ -316,20 +316,27 @@ function _taxonomy_menu_block_form_options(&$form, &$form_state) {
     '#description' => t('Adds a Home-link (link to frontpage) at the beginning of the menu.'),
     '#default_value' => $config['home_link'],
   );
-  
+
   $form['settings']['extras']['nodes'] = array(
     '#type' => 'checkbox',
-    '#title' => t('Display nodes.'),
+    '#title' => t('Display node count.'),
     '#description' => t('Display number of nodes attached to each term.'),
     '#default_value' => $config['nodes'],
   );
-  
-  $form['settings']['extras']['hide_empty'] = array(
+
+  $form['settings']['extras']['nodes_aggregation'] = array(
     '#type' => 'checkbox',
-    '#title' => t('Hide empty.'),
-    '#description' => t('Don\'t display terms with no content attached. For this to work you need to check "Display nodes".'),
-    '#default_value' => $config['hide_empty'],
+    '#title' => t('Aggregate node count.'),
+    '#description' => t('Add the node count of children to the node count of their DIRECT parents. For this to work you need to check "Display nodes".'),
+    '#default_value' => $config['nodes_aggregation'],
   );
+
+//  $form['settings']['extras']['hide_empty'] = array(
+//    '#type' => 'checkbox',
+//    '#title' => t('Hide empty.'),
+//    '#description' => t('Don\'t display terms with no content attached. For this to work you need to check "Display nodes".'),
+//    '#default_value' => $config['hide_empty'],
+//  );
 
   $form['settings']['wrapper-close'] = array(
     '#markup' => '</div>',
