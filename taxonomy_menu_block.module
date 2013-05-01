@@ -191,6 +191,15 @@ function taxonomy_menu_block_build($config) {
     }
   }
 
+  // Set title of block.
+  if ($parent) {
+    $data['subject'] = $tree[$parent]['name'];
+  }
+  else {
+    $vocab = db_query('SELECT name FROM {taxonomy_vocabulary} WHERE vid = :vid', array(':vid' => $config['vid']))->fetchCol();
+    $data['subject'] = $vocab[0];
+  }
+
   // Trim tree to one branch.
   if ($parent) {
     // Loop over tree, store all items that have higher depth than parent.
@@ -245,14 +254,14 @@ function taxonomy_menu_block_build($config) {
   if ($config['nodes']) {
     $tids = array_keys($tree);
     $nodes_aggregation = array();
-    
+
     $nodes = taxonomy_menu_block_get_nodes($tids, $config['vid']);
 
     // Loop over tree and assign the number of nodes to each term.
     foreach ($tree as $tid => $term) {
       if (isset($nodes[$tid])) {
         $tree[$tid]['nodes'] = $nodes[$tid];
-        
+
         // If node aggregation is required create a new array where we keep,
         // per parent, the node count of their children.
         if ($config['nodes_aggregation'] && $term['parents'][0] != '0') {
@@ -271,12 +280,12 @@ function taxonomy_menu_block_build($config) {
 //        $tree[$tid]['nodes'] = 0;
 //      }
 //      else {
-        // this needs to be checked as it fucks with the nesting process
-        // unset($tree[$tid]);
+      // this needs to be checked as it fucks with the nesting process
+      // unset($tree[$tid]);
 //        $tree[$tid]['nodes'] = -1;
 //      }
     }
-    
+
     // Now we still need to add the children node count to the parent node
     // count.
     if ($config['nodes_aggregation'] && !empty($nodes_aggregation)) {
@@ -349,7 +358,7 @@ function taxonomy_menu_block_get_config($delta = NULL) {
     'home_link' => 0,
     'nodes' => 0,
     'nodes_aggregation' => 0,
-    //'hide_empty' => 0,
+      //'hide_empty' => 0,
   );
 
   // Get the block configuration options.
@@ -558,7 +567,7 @@ function taxonomy_menu_block_get_nodes($tids, $vid) {
       GROUP BY t.tid", array(':tids' => $tids, ':lang' => $lang));
 
       $nodes = $nodes->fetchAllKeyed();
-      
+
       $cache = cache_set('taxonomy_menu_block-' . $vid . '-nodes-' . $lang, $nodes);
     }
   }
