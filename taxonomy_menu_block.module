@@ -143,13 +143,15 @@ function taxonomy_menu_block_block_view($delta = '') {
  *   of our tree
  */
 function taxonomy_menu_block_build($config) {
-
+  // Initialize.
   $tree = array();
-  $data['content'] = '';
   $parent = NULL;
+  $data['content'] = '';
+  $data['subject'] = '';
 
   // Get tree.
-  $tree = taxonomy_menu_block_get_tree($config['vid']);
+  $taxonomy = taxonomy_menu_block_get_taxonomy($config['vid']);
+  $tree = $taxonomy['tree'];
 
   // Find active tid.
   $tid = taxonomy_menu_block_find_active_tid($tree, $config['vid']);
@@ -191,13 +193,13 @@ function taxonomy_menu_block_build($config) {
     }
   }
 
-  // Set title of block.
+  // Set title of block. Do it now when we still have the full tree, in case of
+  // a valid parent.
   if ($parent) {
     $data['subject'] = $tree[$parent]['name'];
   }
   else {
-    $vocab = db_query('SELECT name FROM {taxonomy_vocabulary} WHERE vid = :vid', array(':vid' => $config['vid']))->fetchCol();
-    $data['subject'] = $vocab[0];
+    $data['subject'] = $taxonomy['name'];
   }
 
   // Trim tree to one branch.
@@ -252,47 +254,7 @@ function taxonomy_menu_block_build($config) {
 
   // If we have to add the number of nodes attached to each term.
   if ($config['nodes']) {
-    $tids = array_keys($tree);
-    $nodes_aggregation = array();
-
-    $nodes = taxonomy_menu_block_get_nodes($tids, $config['vid']);
-
-    // Loop over tree and assign the number of nodes to each term.
-    foreach ($tree as $tid => $term) {
-      if (isset($nodes[$tid])) {
-        $tree[$tid]['nodes'] = $nodes[$tid];
-
-        // If node aggregation is required create a new array where we keep,
-        // per parent, the node count of their children.
-        if ($config['nodes_aggregation'] && $term['parents'][0] != '0') {
-          $parent_tid = $term['parents'][0];
-          $count = 0;
-          if (isset($nodes_aggregation[$parent_tid])) {
-            $count = $count + $nodes_aggregation[$parent_tid];
-          }
-          $nodes_aggregation[$parent_tid] = $count + $nodes[$tid];
-        }
-      }
-      else {
-        $tree[$tid]['nodes'] = 0;
-      }
-//      elseif (!$config[('hide_empty')]) {
-//        $tree[$tid]['nodes'] = 0;
-//      }
-//      else {
-      // this needs to be checked as it fucks with the nesting process
-      // unset($tree[$tid]);
-//        $tree[$tid]['nodes'] = -1;
-//      }
-    }
-
-    // Now we still need to add the children node count to the parent node
-    // count.
-    if ($config['nodes_aggregation'] && !empty($nodes_aggregation)) {
-      foreach ($nodes_aggregation as $tid => $aggregation) {
-        $tree[$tid]['nodes'] = $tree[$tid]['nodes'] + $aggregation;
-      }
-    }
+    $tree = taxonomy_menu_block_nodes($tree, $config);
   }
 
   // Last check. If we for some reason still don't have a built tree, bail.
@@ -382,9 +344,9 @@ function taxonomy_menu_block_get_name($delta) {
 }
 
 /**
- * Generate taxonomy tree, taking into account i18n.
+ * Get taxonomy tree & name, taking into account i18n.
  */
-function taxonomy_menu_block_get_tree($vid) {
+function taxonomy_menu_block_get_taxonomy($vid) {
   if (module_exists('i18n_taxonomy')) {
     global $language;
     $lang = $language->language;
@@ -393,36 +355,46 @@ function taxonomy_menu_block_get_tree($vid) {
     $cache = cache_get('taxonomy_menu_block-' . $vid . '-' . $lang);
 
     if ($cache) {
-      $tree = $cache->data;
+      $taxonomy = $cache->data;
     }
     else {
-      $data = i18n_taxonomy_get_tree($vid, $lang);
+      $taxonomy = array();
 
+      $vocab = taxonomy_vocabulary_load($vid);
+      $taxonomy['name'] = i18n_taxonomy_vocabulary_name($vocab, $lang);
+
+      $tree = i18n_taxonomy_get_tree($vid, $lang);
       // If data is empty, we have a vocabulary that is set to Translate or
       // Fixed but none of the terms are actually translated
       // (in the current language).
       // Or the vacobulary is set to localize.
-      if (empty($data)) {
-        $data = i18n_taxonomy_localize_terms(i18n_taxonomy_get_tree($vid, 'und'));
+      if (empty($tree)) {
+        $tree = i18n_taxonomy_localize_terms(i18n_taxonomy_get_tree($vid, 'und'));
       }
+      $taxonomy['tree'] = taxonomy_menu_block_structure_tree($tree, $lang);
 
-      $tree = taxonomy_menu_block_structure_tree($data, $lang);
-      $cache = cache_set('taxonomy_menu_block-' . $vid . '-' . $lang, $tree);
+      $cache = cache_set('taxonomy_menu_block-' . $vid . '-' . $lang, $taxonomy);
     }
   }
   else {
     $cache = cache_get('taxonomy_menu_block-' . $vid);
     if (!$cache) {
-      $data = taxonomy_get_tree($vid);
-      $tree = taxonomy_menu_block_structure_tree($data);
-      $cache = cache_set('taxonomy_menu_block-' . $vid, $tree);
+      $taxonomy = array();
+
+      $vocab = taxonomy_vocabulary_load($vid);
+      $taxonomy['name'] = $vocab->name;
+
+      $tree = taxonomy_get_tree($vid);
+      $taxonomy['tree'] = taxonomy_menu_block_structure_tree($tree);
+
+      $cache = cache_set('taxonomy_menu_block-' . $vid, $taxonomy);
     }
     else {
-      $tree = $cache->data;
+      $taxonomy = $cache->data;
     }
   }
 
-  return $tree;
+  return $taxonomy;
 }
 
 /**
@@ -529,6 +501,41 @@ function taxonomy_menu_block_add_active_trail($tree, $tid = NULL) {
     for ($i = 0; $i < $tree[$tid]['depth']; $i++) {
       $tree[$parent]['active_trail'] = '1';
       $parent = $tree[$parent]['parents'][0];
+    }
+  }
+
+  return $tree;
+}
+
+/**
+ * Attach nr. of nodes to each term, plus the optional node options.
+ * 
+ * @param type $tree
+ * @param type $config
+ * @return type 
+ */
+function taxonomy_menu_block_nodes($tree, $config) {
+  // Get the node count.
+  $tids = array_keys($tree);
+  $nodes = taxonomy_menu_block_get_nodes($tids, $config['vid']);
+
+  // Add the "normal" node count.
+  foreach ($tree as $tid => $term) {
+    $tree[$tid]['nodes'] = 0;
+
+    if (isset($nodes[$tid])) {
+      $tree[$tid]['nodes'] = $nodes[$tid];
+    }
+  }
+
+  // Add the aggregation node count.
+  if ($config['nodes_aggregation']) {
+    foreach ($tree as $tid => $term) {
+      // Only aggregate if we have a parent.
+      if ($term['parents'][0] != '0') {
+        $parent_tid = $term['parents'][0];
+        $tree[$parent_tid]['nodes'] = $tree[$parent_tid]['nodes'] + $term['nodes'];
+      }
     }
   }
 

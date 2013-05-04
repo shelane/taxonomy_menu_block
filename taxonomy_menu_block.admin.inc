@@ -42,7 +42,8 @@ function _taxonomy_menu_block_add_block_form_validate($form, &$form_state) {
     case '1':
       // Depth must be higher than the depth of Fixed parent.
       // First get the depth of the term.
-      $term = taxonomy_menu_block_get_tree($values['vid']);
+      $term = taxonomy_menu_block_get_taxonomy($values['vid']);
+      $term = $term['tree'];
       $term = $term[$values['parent_fixed']];
       if ($values['depth'] != '0' && ($term['depth'] + 1) >= $values['depth']) {
         form_set_error('depth', t('Depth must be higher than the depth of your selected Fixed parent.'));
@@ -364,7 +365,8 @@ function taxonomy_menu_block_get_parents_fixed($vid = NULL) {
   $parents_fixed = array();
 
   if ($vid) {
-    $terms = taxonomy_menu_block_get_tree($vid);
+    $terms = taxonomy_menu_block_get_taxonomy($vid);
+    $terms = $terms['tree'];
     foreach ($terms as $tid => $term) {
       $indent = str_repeat('-', $term['depth']);
       $parents_fixed[$tid] = $indent . ' ' . $term['name'];
