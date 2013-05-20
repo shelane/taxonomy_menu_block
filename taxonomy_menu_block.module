@@ -672,8 +672,7 @@ function taxonomy_menu_block_entity_update($entity, $type) {
     case 'taxonomy_vocabulary':
     case 'taxonomy_term':
       // Clear cache for this vocabulary.
-      $cache_name = 'taxonomy_menu_block-' . $entity->vid;
-      db_query("DELETE FROM {cache} WHERE cid LIKE :block", array(':block' => db_like($cache_name) . '%'));
+      cache_clear_all('taxonomy_menu_block-' . $entity->vid, 'cache', TRUE);
       break;
   }
 }
@@ -686,8 +685,7 @@ function taxonomy_menu_block_entity_delete($entity, $type) {
     case 'taxonomy_vocabulary':
     case 'taxonomy_term':
       // Clear cache for this vocabulary.
-      $cache_name = 'taxonomy_menu_block-' . $entity->vid;
-      db_query("DELETE FROM {cache} WHERE cid LIKE :block", array(':block' => db_like($cache_name) . '%'));
+      cache_clear_all('taxonomy_menu_block-' . $entity->vid, 'cache', TRUE);
       break;
   }
 }
