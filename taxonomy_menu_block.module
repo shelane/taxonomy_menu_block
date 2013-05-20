@@ -691,6 +691,15 @@ function taxonomy_menu_block_entity_delete($entity, $type) {
 }
 
 /**
+ * Implements hook_path_alias_types().
+ */
+function taxonomy_menu_block_path_alias_types() {
+  // Clear cache. There's no way of knowing if taxonomy paths have been deleted
+  // so we clear all TMB caches.
+  cache_clear_all('taxonomy_menu_block-', 'cache', TRUE);
+}
+
+/**
  * Expand normal Block add/edit form.
  */
 function taxonomy_menu_block_form_options(&$form, &$form_state) {
