@@ -21,7 +21,7 @@
  * @param array $config
  *   An array containing configuration of current block.
  */
-function hook_taxonomy_tree_alter(&$tree, &$config) {
+function hook_taxonomy_menu_block_tree_alter(&$tree, &$config) {
   // Add the number of nodes associated with each term.
   // Be careful, this can cause bad performance.
   foreach ($tree as $tid => $term) {
@@ -51,7 +51,7 @@ function hook_taxonomy_tree_alter(&$tree, &$config) {
  * @param array $config
  *   An array containing configuration of current block.
  */
-function hook_active_tid_alter(&$tid, &$config) {
+function hook_taxonomy_menu_block_active_tid_alter(&$tid, &$config) {
   // Add support for a custom page we have defined in our Drupal setup, for
   // example with Views: www.site.com/custom/page/tid.
   if (arg(0) == 'custom' && arg(1) == 'page') {

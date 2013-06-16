@@ -292,7 +292,11 @@ function taxonomy_menu_block_build($config) {
   }
 
   // Theme tree.
-  $data['content'] = theme('taxonomy_menu_block', array('items' => $tree, 'config' => $config));
+  $data['content'] = array(
+    '#items' => $tree,
+    '#config' => $config,
+    '#theme' => 'taxonomy_menu_block'
+  );
 
   return $data;
 }
