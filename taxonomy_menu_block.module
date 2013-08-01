@@ -279,8 +279,9 @@ function taxonomy_menu_block_build($config) {
     $tree = $home_link + $tree;
   }
 
-  // Let other modules alter the taxonomy tree data.
-  drupal_alter('taxonomy_menu_block_tree', $tree, $config);
+  // Let other modules alter the taxonomy tree data after all the processing has
+  // been done.
+  drupal_alter('taxonomy_menu_block', $tree, $config);
 
   // Nest tree.
   // If we have a parent, pass along parent.
@@ -375,7 +376,7 @@ function taxonomy_menu_block_get_taxonomy($vid) {
       if (empty($tree)) {
         $tree = i18n_taxonomy_localize_terms(i18n_taxonomy_get_tree($vid, 'und'));
       }
-      $taxonomy['tree'] = taxonomy_menu_block_structure_tree($tree, $lang);
+      $taxonomy['tree'] = taxonomy_menu_block_structure_tree($tree, $vid, $lang);
 
       $cache = cache_set('taxonomy_menu_block-' . $vid . '-' . $lang, $taxonomy);
     }
@@ -389,7 +390,7 @@ function taxonomy_menu_block_get_taxonomy($vid) {
       $taxonomy['name'] = $vocab->name;
 
       $tree = taxonomy_get_tree($vid);
-      $taxonomy['tree'] = taxonomy_menu_block_structure_tree($tree);
+      $taxonomy['tree'] = taxonomy_menu_block_structure_tree($tree, $vid);
 
       $cache = cache_set('taxonomy_menu_block-' . $vid, $taxonomy);
     }
@@ -404,7 +405,7 @@ function taxonomy_menu_block_get_taxonomy($vid) {
 /**
  * Structure tree with only the info we need.
  */
-function taxonomy_menu_block_structure_tree($data, $lang = NULL) {
+function taxonomy_menu_block_structure_tree($data, $vid, $lang = NULL) {
   $tree = array();
 
   foreach ($data as $term) {
@@ -423,6 +424,9 @@ function taxonomy_menu_block_structure_tree($data, $lang = NULL) {
       $tree[$term->tid] = $branch;
     }
   }
+  
+  // Let other modules alter the tree data before it gets cached.
+  drupal_alter('taxonomy_menu_block_tree', $tree, $vid);
 
   return $tree;
 }
