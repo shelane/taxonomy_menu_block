@@ -135,7 +135,7 @@ function taxonomy_menu_block_save_block($delta = '', $values = array()) {
     $taxonomy_menu_block['home_link'] = $values['home_link'];
     $taxonomy_menu_block['nodes'] = $values['nodes'];
     $taxonomy_menu_block['nodes_aggregation'] = $values['nodes_aggregation'];
-    //$taxonomy_menu_block['hide_empty'] = $values['hide_empty'];
+    $taxonomy_menu_block['hide_empty'] = $values['hide_empty'];
 
     variable_set("taxonomy_menu_block_{$delta}", $taxonomy_menu_block);
   }
@@ -328,16 +328,16 @@ function _taxonomy_menu_block_form_options(&$form, &$form_state) {
   $form['settings']['extras']['nodes_aggregation'] = array(
     '#type' => 'checkbox',
     '#title' => t('Aggregate node count.'),
-    '#description' => t('Add the node count of children to the node count of their DIRECT parents. For this to work you need to check "Display nodes".'),
+    '#description' => t('Add the node count of children to the node count of their <em>direct</em> parents. For this to work you need to check "Display nodes".'),
     '#default_value' => $config['nodes_aggregation'],
   );
 
-//  $form['settings']['extras']['hide_empty'] = array(
-//    '#type' => 'checkbox',
-//    '#title' => t('Hide empty.'),
-//    '#description' => t('Don\'t display terms with no content attached. For this to work you need to check "Display nodes".'),
-//    '#default_value' => $config['hide_empty'],
-//  );
+  $form['settings']['extras']['hide_empty'] = array(
+    '#type' => 'checkbox',
+    '#title' => t('Hide empty.'),
+    '#description' => t('Don\'t display terms with no content attached.'),
+    '#default_value' => $config['hide_empty'],
+  );
 
   $form['settings']['wrapper-close'] = array(
     '#markup' => '</div>',

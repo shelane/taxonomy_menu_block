@@ -257,6 +257,11 @@ function taxonomy_menu_block_build($config) {
     $tree = taxonomy_menu_block_nodes($tree, $config);
   }
 
+  // If we have to remove the terms with no nodes attached.
+  if ($config['hide_empty']) {
+    $tree = taxonomy_menu_block_hide_empty($tree, $config);
+  }
+
   // Last check. If we for some reason still don't have a built tree, bail.
   if (empty($tree)) {
     return;
@@ -325,7 +330,7 @@ function taxonomy_menu_block_get_config($delta = NULL) {
     'home_link' => 0,
     'nodes' => 0,
     'nodes_aggregation' => 0,
-      //'hide_empty' => 0,
+    'hide_empty' => 0,
   );
 
   // Get the block configuration options.
@@ -424,7 +429,7 @@ function taxonomy_menu_block_structure_tree($data, $vid, $lang = NULL) {
       $tree[$term->tid] = $branch;
     }
   }
-  
+
   // Let other modules alter the tree data before it gets cached.
   drupal_alter('taxonomy_menu_block_tree', $tree, $vid);
 
@@ -544,6 +549,106 @@ function taxonomy_menu_block_nodes($tree, $config) {
         $parent_tid = $term['parents'][0];
         $tree[$parent_tid]['nodes'] = $tree[$parent_tid]['nodes'] + $term['nodes'];
       }
+    }
+  }
+
+  return $tree;
+}
+
+/**
+ * Delete the terms with no nodes attached to them.
+ * 
+ * @param type $tree
+ * @param type $config
+ */
+function taxonomy_menu_block_hide_empty($tree, $config) {
+  // Get the node count.
+  $tids = array_keys($tree);
+  $nodes = taxonomy_menu_block_get_nodes($tids, $config['vid']);
+
+  // Create helper array with subsequent keys.
+  $helper = array();
+  foreach ($tree as $tid => $term) {
+    $temp = array(
+      'tid' => $tid,
+      'depth' => $term['depth'],
+    );
+    $helper[] = $temp;
+  }
+
+  $branches = array();
+
+  foreach ($helper as $i => $term) {
+    // If the current term has any nodes, set any branches to which this term
+    // may belong to to non-delete
+    if (isset($nodes[$term['tid']])) {
+      foreach ($branches as $b => $branch) {
+        $branches[$b]['delete'] = FALSE;
+      }
+    }
+    
+    // Get key for next term.
+    $key = $i + 1;
+    // If we have only one term or at the end of our array.
+    if (!isset($helper[$key])) {
+      if (!isset($nodes[$term['tid']])) {
+        unset($tree[$term['tid']]);
+      }
+    }
+    else {
+      // Get next term.
+      $next = $helper[$key];
+
+      // If current and next term have same depth.
+      if ($term['depth'] == $next['depth']) {
+        if (!isset($nodes[$term['tid']])) {
+          unset($tree[$term['tid']]);
+        }
+      }
+
+      // If next term is higher in depth, we have a new branch.
+      if ($term['depth'] < $next['depth']) {
+        // If we have no nodes, set parent of branch ready for deletion.
+        if (isset($nodes[$term['tid']])) {
+          $branches[$term['tid']] = array(
+            'tid' => $term['tid'],
+            'delete' => FALSE,
+          );
+        }
+        else {
+          $branches[$term['tid']] = array(
+            'tid' => $term['tid'],
+            'delete' => TRUE,
+          );
+        }
+      }
+
+      // If next term is lower in depth, we are at the end of a branch.
+      // Todo: calculate how many open branches get closed
+      if ($term['depth'] > $next['depth']) {
+        // Find out how many branches were closed.
+        $depth = $term['depth'] - $next['depth'];
+        //dpm($depth);
+        for ($i = 0; $i < $depth; $i++) {
+          // Get last open branch.
+          $branch = array_pop($branches);
+          if ($branch['delete']) {
+            unset($tree[$branch['tid']]);
+          }
+        }
+
+        // End of branch always means the current term is not a branch itself.
+        if (!isset($nodes[$term['tid']])) {
+          unset($tree[$term['tid']]);
+        }
+      }
+    }
+  }
+
+  // Check remaining branches
+  foreach ($branches as $b => $branch) {
+    if ($branch['delete']) {
+      unset($tree[$branch['tid']]);
     }
   }
 
