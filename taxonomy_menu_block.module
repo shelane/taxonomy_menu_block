@@ -301,7 +301,7 @@ function taxonomy_menu_block_build($config) {
   $data['content'] = array(
     '#items' => $tree,
     '#config' => $config,
-    '#theme' => 'taxonomy_menu_block'
+    '#theme' => 'taxonomy_menu_block__' . $config['delta'],
   );
 
   return $data;
@@ -624,11 +624,9 @@ function taxonomy_menu_block_hide_empty($tree, $config) {
       }
 
       // If next term is lower in depth, we are at the end of a branch.
-      // Todo: calculate how many open branches get closed
       if ($term['depth'] > $next['depth']) {
         // Find out how many branches were closed.
         $depth = $term['depth'] - $next['depth'];
-        //dpm($depth);
         for ($i = 0; $i < $depth; $i++) {
           // Get last open branch.
           $branch = array_pop($branches);
