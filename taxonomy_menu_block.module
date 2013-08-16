@@ -766,7 +766,7 @@ function theme_taxonomy_menu_block($variables) {
     // time, as this is cached anyway.
     $output .= '<li' . drupal_attributes($attributes) . '>' . l($term['name'], $term['path'], $options = array('alias' => TRUE));
     if (!empty($term['children'])) {
-      $output .= theme_taxonomy_menu_block(array('items' => $term['children'], 'config' => $config));
+      $output .= theme('taxonomy_menu_block__' . $config['delta'], (array('items' => $term['children'], 'config' => $config)));
     }
     $output .= '</li>';
   }
