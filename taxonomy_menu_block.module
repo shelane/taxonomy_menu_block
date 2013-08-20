@@ -522,10 +522,10 @@ function taxonomy_menu_block_add_active_trail($tree, $tid = NULL) {
 
 /**
  * Attach nr. of nodes to each term, plus the optional node options.
- * 
+ *
  * @param type $tree
  * @param type $config
- * @return type 
+ * @return type
  */
 function taxonomy_menu_block_nodes($tree, $config) {
   // Get the node count.
@@ -557,7 +557,7 @@ function taxonomy_menu_block_nodes($tree, $config) {
 
 /**
  * Delete the terms with no nodes attached to them.
- * 
+ *
  * @param type $tree
  * @param type $config
  */
@@ -586,7 +586,7 @@ function taxonomy_menu_block_hide_empty($tree, $config) {
         $branches[$b]['delete'] = FALSE;
       }
     }
-    
+
     // Get key for next term.
     $key = $i + 1;
     // If we have only one term or at the end of our array.
@@ -655,7 +655,7 @@ function taxonomy_menu_block_hide_empty($tree, $config) {
 
 /**
  * Get the number of nodes attached to the terms of a vocabulary.
- * 
+ *
  * We try to keep this as performant as possible by doing one query for all the
  * terms in a vocabulary, which we will then cache.
  */
@@ -676,12 +676,12 @@ function taxonomy_menu_block_get_nodes($tids, $vid) {
     }
     else {
       $nodes = db_query("
-      SELECT t.tid, count(*) 
-      FROM {taxonomy_index} t 
-      INNER JOIN {node} n 
-      ON t.nid = n.nid 
-      WHERE t.tid IN (:tids) 
-      AND n.language = :lang 
+      SELECT t.tid, count(*)
+      FROM {taxonomy_index} t
+      INNER JOIN {node} n
+      ON t.nid = n.nid
+      WHERE t.tid IN (:tids)
+      AND n.language = :lang
       GROUP BY t.tid", array(':tids' => $tids, ':lang' => $lang));
 
       $nodes = $nodes->fetchAllKeyed();
@@ -757,8 +757,7 @@ function theme_taxonomy_menu_block($variables) {
     }
 
     // Alter link text if we have to display the nodes attached.
-    // Not for the home link, if it's there.
-    if ($config['nodes'] && $tid > '0') {
+    if (isset($term['nodes'])) {
       $term['name'] = $term['name'] . ' (' . $term['nodes'] . ')';
     }
 
@@ -773,6 +772,18 @@ function theme_taxonomy_menu_block($variables) {
   $output .= '</ul>';
 
   return $output;
+}
+
+/**
+ * Implements hook_entity_insert().
+ */
+function taxonomy_menu_block_entity_insert($entity, $type) {
+  switch ($type) {
+    case 'taxonomy_term':
+      // Clear cache for this vocabulary.
+      cache_clear_all('taxonomy_menu_block-' . $entity->vid, 'cache', TRUE);
+      break;
+  }
 }
 
 /**
