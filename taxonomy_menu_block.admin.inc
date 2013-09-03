@@ -228,7 +228,7 @@ function _taxonomy_menu_block_form_options(&$form, &$form_state) {
     '#type' => 'textfield',
     '#default_value' => $config['admin_title'],
     '#title' => t('Administrative title'),
-    '#description' => t('This title will be used administratively to identify this block. If blank, "Taxonomy Menu Block" will be used'),
+    '#description' => t('This title will be used administratively to identify this block. If blank, "Taxonomy Menu Block" will be used.'),
   );
 
   $form['settings']['vid'] = array(
@@ -258,7 +258,7 @@ function _taxonomy_menu_block_form_options(&$form, &$form_state) {
   $form['settings']['parent_fixed'] = array(
     '#type' => 'select',
     '#title' => t('Select a parent'),
-    '#description' => t('Select a taxonomy term from your chosen vocabulary'),
+    '#description' => t('Select a taxonomy term from your chosen vocabulary. An empty list means you have no terms in this vocabulary (for the current language).'),
     '#prefix' => '<div id="dropdown-fixed-parent">',
     '#suffix' => '</div>',
     '#options' => $parents_fixed,
@@ -360,13 +360,14 @@ function taxonomy_menu_block_ajax_parent_callback($form, $form_state) {
  * @return array
  *   Array of terms of a certain vocabulary.
  */
-function taxonomy_menu_block_get_parents_fixed($vid = NULL) {
+function taxonomy_menu_block_get_parents_fixed($vid = 0) {
 
   $parents_fixed = array();
 
-  if ($vid) {
-    $terms = taxonomy_menu_block_get_taxonomy($vid);
-    $terms = $terms['tree'];
+  $terms = taxonomy_menu_block_get_taxonomy($vid);
+  $terms = $terms['tree'];
+
+  if ($terms) {
     foreach ($terms as $tid => $term) {
       $indent = str_repeat('-', $term['depth']);
       $parents_fixed[$tid] = $indent . ' ' . $term['name'];
