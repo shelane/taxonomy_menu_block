@@ -40,11 +40,17 @@ function _taxonomy_menu_block_add_block_form_validate($form, &$form_state) {
       break;
 
     case '1':
+      $terms = taxonomy_menu_block_get_taxonomy($values['vid']);
+      $terms = $terms['tree'];
+
+      // If we can't find the term (mostly because there are no terms in the vocab yet).
+      if (!isset($terms[$values['parent_fixed']])) {
+        form_set_error('parent_fixed', t('No valid parent selected.'));
+        return;
+      }
+
       // Depth must be higher than the depth of Fixed parent.
-      // First get the depth of the term.
-      $term = taxonomy_menu_block_get_taxonomy($values['vid']);
-      $term = $term['tree'];
-      $term = $term[$values['parent_fixed']];
+      $term = $terms[$values['parent_fixed']];
       if ($values['depth'] != '0' && ($term['depth'] + 1) >= $values['depth']) {
         form_set_error('depth', t('Depth must be higher than the depth of your selected Fixed parent.'));
       }
