@@ -43,7 +43,8 @@ function _taxonomy_menu_block_add_block_form_validate($form, &$form_state) {
       $terms = taxonomy_menu_block_get_taxonomy($values['vid']);
       $terms = $terms['tree'];
 
-      // If we can't find the term (mostly because there are no terms in the vocab yet).
+      // If we can't find the term. Mostly because there are no terms in
+      // the vocabulary yet (in the current language).
       if (!isset($terms[$values['parent_fixed']])) {
         form_set_error('parent_fixed', t('No valid parent selected.'));
         return;
@@ -294,7 +295,7 @@ function _taxonomy_menu_block_form_options(&$form, &$form_state) {
   $form['settings']['depth'] = array(
     '#type' => 'select',
     '#title' => t('Depth'),
-    '#description' => t('Specify the maximum depth of the taxonomy tree.'),
+    '#description' => t('Specify the maximum depth of the taxonomy tree. Depth is always relative to the root, except when you choose Dynamic parent > Follow active item, then depth is relative to the active item.'),
     '#default_value' => $config['depth'],
     '#options' => array(
       '1' => '1',

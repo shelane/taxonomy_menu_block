@@ -185,6 +185,8 @@ function taxonomy_menu_block_build($config) {
     }
     else {
       $parent = $tid;
+      // Store depth for later use.
+      $parent_depth = $tree[$parent]['depth'];
     }
 
     // Since we know we have an active tid, we should have a parent.
@@ -234,9 +236,15 @@ function taxonomy_menu_block_build($config) {
 
   // Depth trim. Always do this last as to not lose the active trail.
   if ($config['depth'] != '0') {
-    // Substract one of our max depth because Drupal considers 0 to be
-    // the root level.
-    $max_depth = $config['depth'] - 1;
+    if ($config['parent'] == 2 && $config['parent_dynamic'] == 0) {
+      // Depth is relative to the parent term's depth.
+      $max_depth = $parent_depth + $config['depth'];
+    }
+    else {
+      // Depth is relative to the root. Substract one of our max depth
+      // because Drupal considers 0 to be the root level.
+      $max_depth = $config['depth'] - 1;
+    }
 
     $temp_tree = array();
     foreach ($tree as $tid => $term) {
@@ -244,6 +252,7 @@ function taxonomy_menu_block_build($config) {
         $temp_tree[$tid] = $term;
       }
     }
+
     if ($temp_tree) {
       $tree = $temp_tree;
     }
