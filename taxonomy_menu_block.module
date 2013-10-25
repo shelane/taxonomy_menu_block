@@ -684,14 +684,18 @@ function taxonomy_menu_block_get_nodes($tids, $vid) {
       $nodes = $cache->data;
     }
     else {
+      // Query for nodes attached to every term of the tree. 
+      // Later we'll sift out the node counts we need from this global result.
       $nodes = db_query("
-      SELECT t.tid, count(*)
-      FROM {taxonomy_index} t
+      SELECT ti.tid, count(*)
+      FROM {taxonomy_index} ti
       INNER JOIN {node} n
-      ON t.nid = n.nid
-      WHERE t.tid IN (:tids)
+      ON ti.nid = n.nid
+      INNER JOIN {taxonomy_term_data} ttd
+      ON ti.tid = ttd.tid
+      WHERE ttd.vid = :vid
       AND n.language = :lang
-      GROUP BY t.tid", array(':tids' => $tids, ':lang' => $lang));
+      GROUP BY ti.tid", array(':vid' => $vid, ':lang' => $lang));
 
       $nodes = $nodes->fetchAllKeyed();
 
@@ -707,12 +711,23 @@ function taxonomy_menu_block_get_nodes($tids, $vid) {
     else {
       // Here we don't need to take language in account. Every term has its own
       // tid.
-      $nodes = db_query("SELECT tid, count(*) FROM {taxonomy_index} WHERE tid IN (:tids) GROUP BY tid", array(':tids' => $tids));
+      $nodes = db_query("
+        SELECT ti.tid, count(*) 
+        FROM {taxonomy_index} ti
+        INNER JOIN {taxonomy_term_data} ttd
+        ON ti.tid = ttd.tid
+        WHERE ttd.vid = :vid
+        GROUP BY ti.tid", array(':vid' => $vid));
+      
       $nodes = $nodes->fetchAllKeyed();
 
       $cache = cache_set('taxonomy_menu_block-' . $vid . '-nodes', $nodes);
     }
   }
+
+  // Find the same values of our two arrays
+  $tids = array_flip($tids);
+  $nodes = array_intersect_key($nodes, $tids);
 
   return $nodes;
 }
