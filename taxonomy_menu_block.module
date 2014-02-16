@@ -553,9 +553,10 @@ function taxonomy_menu_block_nodes($tree, $config) {
   // Add the aggregation node count.
   if ($config['nodes_aggregation']) {
     foreach ($tree as $tid => $term) {
-      // Only aggregate if we have a parent.
-      if ($term['parents'][0] != '0') {
-        $parent_tid = $term['parents'][0];
+      // Only aggregate if we have a parent and if the term is present in the
+      // current tree.
+      $parent_tid = $term['parents'][0];
+      if (isset($tree[$parent_tid]) && $parent_tid != '0') {
         $tree[$parent_tid]['nodes'] = $tree[$parent_tid]['nodes'] + $term['nodes'];
       }
     }
@@ -684,7 +685,7 @@ function taxonomy_menu_block_get_nodes($tids, $vid) {
       $nodes = $cache->data;
     }
     else {
-      // Query for nodes attached to every term of the tree. 
+      // Query for nodes attached to every term of the tree.
       // Later we'll sift out the node counts we need from this global result.
       $nodes = db_query("
       SELECT ti.tid, count(*)
@@ -712,13 +713,13 @@ function taxonomy_menu_block_get_nodes($tids, $vid) {
       // Here we don't need to take language in account. Every term has its own
       // tid.
       $nodes = db_query("
-        SELECT ti.tid, count(*) 
+        SELECT ti.tid, count(*)
         FROM {taxonomy_index} ti
         INNER JOIN {taxonomy_term_data} ttd
         ON ti.tid = ttd.tid
         WHERE ttd.vid = :vid
         GROUP BY ti.tid", array(':vid' => $vid));
-      
+
       $nodes = $nodes->fetchAllKeyed();
 
       $cache = cache_set('taxonomy_menu_block-' . $vid . '-nodes', $nodes);
