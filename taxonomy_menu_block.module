@@ -198,10 +198,10 @@ function taxonomy_menu_block_build($config) {
   // Set title of block. Do it now when we still have the full tree, in case of
   // a valid parent.
   if ($parent) {
-    $data['subject'] = $tree[$parent]['name'];
+    $data['subject'] = check_plain($tree[$parent]['name']);
   }
   else {
-    $data['subject'] = $taxonomy['name'];
+    $data['subject'] = check_plain($taxonomy['name']);
   }
 
   // Trim tree to one branch.
