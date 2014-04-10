@@ -340,6 +340,7 @@ function taxonomy_menu_block_get_config($delta = NULL) {
     'nodes' => 0,
     'nodes_aggregation' => 0,
     'hide_empty' => 0,
+    'ctype' => 'all',
   );
 
   // Get the block configuration options.
