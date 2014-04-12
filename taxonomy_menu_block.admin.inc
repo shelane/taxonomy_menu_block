@@ -136,6 +136,13 @@ function taxonomy_menu_block_save_block($delta = '', $values = array()) {
     return;
   }
   
+  $ctypes = array();
+  foreach ($values['ctype'] as $type) {
+    if ($type) {
+      $ctypes[] = $type;
+    }
+  }
+  
   $taxonomy_menu_block = array(
     'delta' => $delta,
     'admin_title' => $values['admin_title'],
@@ -148,7 +155,7 @@ function taxonomy_menu_block_save_block($delta = '', $values = array()) {
     'nodes' => $values['nodes'],
     'nodes_aggregation' => $values['nodes_aggregation'],
     'hide_empty' => $values['hide_empty'],
-    'ctype' => $values['ctype'],
+    'ctype' => $ctypes,
   );
 
   variable_set("taxonomy_menu_block_{$delta}", $taxonomy_menu_block);

@@ -672,7 +672,7 @@ function taxonomy_menu_block_hide_empty($tree, $config) {
  */
 function taxonomy_menu_block_get_nodes($tids, $vid, $ctype) {
   $nodes = array();
-  
+
   if (!empty($ctype)) {
     $ctypestring = implode('-', $ctype);
   }
