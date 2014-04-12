@@ -349,11 +349,12 @@ function _taxonomy_menu_block_form_options(&$form, &$form_state) {
   
   $form['settings']['node_options']['ctype'] = array(
     '#type' => 'select',
+    '#multiple' => TRUE,
     '#title' => t('Content type'),
-    '#description' => t('Only apply node options for this content type.'),
+    '#description' => t('Only apply node options for certain content type(s). Leave all unchecked to select all types.'),
     '#options' => $ctypes,
     '#default_value' => $config['ctype'],
-    '#prefix' => '<div id="dropdown-node-types">',
+    '#prefix' => '<div id="node-types">',
     '#suffix' => '</div>',
   );
 
@@ -369,7 +370,7 @@ function taxonomy_menu_block_ajax_callback($form, $form_state) {
   $vid = $form_state['values']['vid'];
   
   $commands = array();
-  $keys_to_keep = array('#type', '#title', '#description', '#description', '#prefix', '#suffix');
+  $keys_to_keep = array('#type', '#multiple', '#title', '#description', '#prefix', '#suffix', '#default_value');
   
   // Get the correct form elements, strip the auto-added values and add in their
   // new values.
@@ -381,7 +382,7 @@ function taxonomy_menu_block_ajax_callback($form, $form_state) {
   $ctype = $form['settings']['node_options']['ctype'];
   $ctype = array_intersect_key($ctype, array_flip($keys_to_keep));
   $ctype['#options'] = taxonomy_menu_block_get_node_types($vid);
-  $commands[] = ajax_command_replace('#dropdown-node-types', drupal_render($ctype));
+  $commands[] = ajax_command_replace('#node-types', drupal_render($ctype));
   
   return array(
     '#type' => 'ajax',
@@ -398,8 +399,12 @@ function taxonomy_menu_block_ajax_callback($form, $form_state) {
  * @return array $parents_fixed
  *   Array of terms of a certain vocabulary.
  */
-function taxonomy_menu_block_get_parents_fixed($vid) {
+function taxonomy_menu_block_get_parents_fixed($vid = 0) {
   $parents_fixed = array();
+  
+  if (!$vid) {
+    return $parents_fixed;
+  }
 
   $terms = taxonomy_menu_block_get_taxonomy($vid);
   $terms = $terms['tree'];
@@ -423,14 +428,33 @@ function taxonomy_menu_block_get_parents_fixed($vid) {
  * @return array $options
  *   Array of node types
  */
-function taxonomy_menu_block_get_node_types($vid) {
-  $options = array(
-    'all' => t('All'),
-  );
+function taxonomy_menu_block_get_node_types($vid = 0) {
+  $options = array();
   
-  $ctypes = array();
-  foreach (node_type_get_types() as $type) {
-    $ctypes[$type->type] = $type->name;
+  if (!$vid) {
+    return $options;
+  }
+
+  $vocab = taxonomy_vocabulary_load($vid);
+  $name = $vocab->machine_name;
+  
+  // Load all defined fields.
+  $fields = field_info_fields();
+
+  // See if any are term reference fields that reference to $vid.
+  $types = array();
+  foreach ($fields as $key => $field) {
+    if ($field['type'] != 'taxonomy_term_reference' || $field['deleted'] != '0' || !isset($field['bundles']['node']) || $field['settings']['allowed_values'][0]['vocabulary'] != $name) {
+      continue;
+    }
+
+    $types = array_merge($types, $field['bundles']['node']);
+  }
+  
+  $ctypes = node_type_get_types();
+  
+  foreach ($types as $type) {
+    $options[$type] = $ctypes[$type]->name;
   }
   
   return $options;
