@@ -48,3 +48,20 @@ function taxonomy_menu_block_update_7100() {
     taxonomy_menu_block_save_block($delta, $config);
   }
 }
+
+/**
+ * Make old blocks compatible with new node options.
+ */
+function taxonomy_menu_block_update_7101() {
+   module_load_include('inc', 'taxonomy_menu_block', 'taxonomy_menu_block.admin');
+   
+  // Loop over all existing blocks and re-save them with the newly added options.
+  foreach (variable_get('taxonomy_menu_block_ids', array()) as $delta) {
+    $config = taxonomy_menu_block_get_config($delta);
+    
+    if (!isset($config['ctype']))
+      $config['ctype'] = array();
+    
+    taxonomy_menu_block_save_block($delta, $config);
+  }
+}
