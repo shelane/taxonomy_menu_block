@@ -348,9 +348,9 @@ function _taxonomy_menu_block_form_options(&$form, &$form_state) {
   );
   
   $form['settings']['node_options']['ctype'] = array(
-    '#type' => 'select',
-    '#multiple' => TRUE,
+    '#type' => 'checkboxes',
     '#title' => t('Content type'),
+    '#title_display' => 'before',
     '#description' => t('Only apply node options for certain content type(s). Leave all unchecked to select all types.'),
     '#options' => $ctypes,
     '#default_value' => $config['ctype'],
@@ -370,7 +370,7 @@ function taxonomy_menu_block_ajax_callback($form, $form_state) {
   $vid = $form_state['values']['vid'];
   
   $commands = array();
-  $keys_to_keep = array('#type', '#multiple', '#title', '#description', '#prefix', '#suffix', '#default_value');
+  $keys_to_keep = array('#type', '#title', '#title_display', '#description', '#prefix', '#suffix', '#default_value');
   
   // Get the correct form elements, strip the auto-added values and add in their
   // new values.
