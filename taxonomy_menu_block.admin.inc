@@ -351,7 +351,7 @@ function _taxonomy_menu_block_form_options(&$form, &$form_state) {
     '#type' => 'checkboxes',
     '#title' => t('Content type'),
     '#title_display' => 'before',
-    '#description' => t('Only apply node options for certain content type(s). Leave all unchecked to select all types.'),
+    '#description' => t('Only apply node options for certain content type(s). Content types must have a term reference field to the chosen vocabulary. Leave all unchecked to select all types.'),
     '#options' => $ctypes,
     '#default_value' => $config['ctype'],
     '#prefix' => '<div id="node-types">',
@@ -382,7 +382,7 @@ function taxonomy_menu_block_ajax_callback($form, $form_state) {
   $ctype = $form['settings']['node_options']['ctype'];
   $ctype = array_intersect_key($ctype, array_flip($keys_to_keep));
   $ctype['#options'] = taxonomy_menu_block_get_node_types($vid);
-  $commands[] = ajax_command_replace('#node-types', drupal_render($ctype));
+  $commands[] = ajax_command_replace('#node-types', drupal_render(form_process_checkboxes($ctype)));
   
   return array(
     '#type' => 'ajax',
