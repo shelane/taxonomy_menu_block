@@ -137,7 +137,7 @@ function taxonomy_menu_block_save_block($delta = '', $values = array()) {
   }
   
   $ctypes = array();
-  foreach ($values['ctype'] as $type) {
+  foreach ($values['ctype'] as $key => $type) {
     if ($type) {
       $ctypes[] = $type;
     }
@@ -224,6 +224,7 @@ function _taxonomy_menu_block_form_options(&$form, &$form_state) {
   // Get default values for this block.
   $delta = $form['delta']['#value'];
   $config = taxonomy_menu_block_get_config($delta);
+  $form_state['#config'] = $config;
 
   // Override if we have already submitted our form
   // (with Ajax callback for example).
@@ -231,11 +232,16 @@ function _taxonomy_menu_block_form_options(&$form, &$form_state) {
     $config = $form_state['values'];
   }
 
-  // Build the fixed parent dropdown list.
-  $parents_fixed = taxonomy_menu_block_get_parents_fixed(key($vocabs));
-  
-  // Get the content types for which we can possibly apply the node options.
-  $ctypes = taxonomy_menu_block_get_node_types(key($vocabs));
+  // Build the fixed parent dropdown list and get the content types for which 
+  // we can possibly apply the node options.
+  if ($config['vid']) {
+    $parents_fixed = taxonomy_menu_block_get_parents_fixed($config['vid']);
+    $ctypes = taxonomy_menu_block_get_node_types($config['vid']);
+  }
+  else {
+    $parents_fixed = taxonomy_menu_block_get_parents_fixed(key($vocabs));
+    $ctypes = taxonomy_menu_block_get_node_types(key($vocabs));
+  }
 
   $form['settings']['wrapper-start'] = array(
     '#markup' => '<div id="taxonomy-menu-block-wrapper">',
@@ -373,23 +379,20 @@ function _taxonomy_menu_block_form_options(&$form, &$form_state) {
 /**
  * Ajax callback function.
  */
-function taxonomy_menu_block_ajax_callback($form, $form_state) {
+function taxonomy_menu_block_ajax_callback(&$form, &$form_state) {
   $vid = $form_state['values']['vid'];
-  
   $commands = array();
-  $keys_to_keep = array('#type', '#title', '#title_display', '#description', '#prefix', '#suffix', '#default_value');
   
-  // Get the correct form elements, strip the auto-added values and add in their
-  // new values.
+  // Get the correct form elements and add in new option values.
   $parent_fixed = $form['settings']['parent_fixed'];
-  $parent_fixed = array_intersect_key($parent_fixed, array_flip($keys_to_keep));
   $parent_fixed['#options'] = taxonomy_menu_block_get_parents_fixed($vid);
+  $parent_fixed = form_builder($form['#id'], $parent_fixed, $form_state);
   $commands[] = ajax_command_replace('#dropdown-fixed-parent', drupal_render($parent_fixed));
   
   $ctype = $form['settings']['node_options']['ctype'];
-  $ctype = array_intersect_key($ctype, array_flip($keys_to_keep));
   $ctype['#options'] = taxonomy_menu_block_get_node_types($vid);
-  $commands[] = ajax_command_replace('#node-types', drupal_render(form_process_checkboxes($ctype)));
+  $ctype = form_builder($form['#id'], $ctype, $form_state);
+  $commands[] = ajax_command_replace('#node-types', drupal_render($ctype));
   
   return array(
     '#type' => 'ajax',
