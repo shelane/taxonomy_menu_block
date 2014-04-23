@@ -479,10 +479,11 @@ function taxonomy_menu_block_find_active_tid($tree, $vid) {
       foreach ($term_reference_fields[$node->type] as $term_reference_field) {
         $term_reference_field = $node->$term_reference_field;
         if (!empty($term_reference_field[LANGUAGE_NONE])) {
-          // Only the first value will be selected, also for fields that allow
+          // Only the last value will be selected, also for fields that allow
           // multiple values. It doesn't make sense to have more than one
           // active trail/items in a menu.
-          $tid = $term_reference_field[LANGUAGE_NONE][0]['tid'];
+          $tid = end($term_reference_field[LANGUAGE_NONE]);
+          $tid = $tid['tid'];
           // Check if the term actually belongs to the vocabulary we need to
           // display (node can have more than one term reference field).
           if (isset($tree[$tid])) {
