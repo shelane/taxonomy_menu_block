@@ -454,6 +454,11 @@ function taxonomy_menu_block_find_active_tid($tree, $vid) {
 
   // Check on what kind of page we are.
   $current = menu_get_item();
+  
+  // Return if we have no access
+  if (!$current['access']) {
+    return $active;
+  }
 
   // If we're on a NODE page.
   if ($current['path'] == 'node/%') {
