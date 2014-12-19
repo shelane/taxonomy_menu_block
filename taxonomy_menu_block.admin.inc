@@ -135,14 +135,14 @@ function taxonomy_menu_block_save_block($delta = '', $values = array()) {
   if (empty($delta)) {
     return;
   }
-  
+
   $ctypes = array();
   foreach ($values['ctype'] as $key => $type) {
     if ($type) {
       $ctypes[] = $type;
     }
   }
-  
+
   $taxonomy_menu_block = array(
     'delta' => $delta,
     'admin_title' => $values['admin_title'],
@@ -232,7 +232,7 @@ function _taxonomy_menu_block_form_options(&$form, &$form_state) {
     $config = $form_state['values'];
   }
 
-  // Build the fixed parent dropdown list and get the content types for which 
+  // Build the fixed parent dropdown list and get the content types for which
   // we can possibly apply the node options.
   if ($config['vid']) {
     $parents_fixed = taxonomy_menu_block_get_parents_fixed($config['vid']);
@@ -359,7 +359,7 @@ function _taxonomy_menu_block_form_options(&$form, &$form_state) {
     '#description' => t('Don\'t display terms with no content attached.'),
     '#default_value' => $config['hide_empty'],
   );
-  
+
   $form['settings']['node_options']['ctype'] = array(
     '#type' => 'checkboxes',
     '#title' => t('Content type'),
@@ -382,18 +382,18 @@ function _taxonomy_menu_block_form_options(&$form, &$form_state) {
 function taxonomy_menu_block_ajax_callback(&$form, &$form_state) {
   $vid = $form_state['values']['vid'];
   $commands = array();
-  
+
   // Get the correct form elements and add in new option values.
   $parent_fixed = $form['settings']['parent_fixed'];
   $parent_fixed['#options'] = taxonomy_menu_block_get_parents_fixed($vid);
   $parent_fixed = form_builder($form['#id'], $parent_fixed, $form_state);
   $commands[] = ajax_command_replace('#dropdown-fixed-parent', drupal_render($parent_fixed));
-  
+
   $ctype = $form['settings']['node_options']['ctype'];
   $ctype['#options'] = taxonomy_menu_block_get_node_types($vid);
   $ctype = form_builder($form['#id'], $ctype, $form_state);
   $commands[] = ajax_command_replace('#node-types', drupal_render($ctype));
-  
+
   return array(
     '#type' => 'ajax',
     '#commands' => $commands,
@@ -411,7 +411,7 @@ function taxonomy_menu_block_ajax_callback(&$form, &$form_state) {
  */
 function taxonomy_menu_block_get_parents_fixed($vid = 0) {
   $parents_fixed = array();
-  
+
   if (!$vid) {
     return $parents_fixed;
   }
@@ -431,23 +431,23 @@ function taxonomy_menu_block_get_parents_fixed($vid = 0) {
 
 /**
  * Get content types that have term references to a certain vocabulary.
- * 
+ *
  * @param int $vid
  *   Vocabulary id.
- * 
+ *
  * @return array $options
  *   Array of node types
  */
 function taxonomy_menu_block_get_node_types($vid = 0) {
   $options = array();
-  
+
   if (!$vid) {
     return $options;
   }
 
   $vocab = taxonomy_vocabulary_load($vid);
   $name = $vocab->machine_name;
-  
+
   // Load all defined fields.
   $fields = field_info_fields();
 
@@ -460,12 +460,12 @@ function taxonomy_menu_block_get_node_types($vid = 0) {
 
     $types = array_merge($types, $field['bundles']['node']);
   }
-  
+
   $ctypes = node_type_get_types();
-  
+
   foreach ($types as $type) {
     $options[$type] = $ctypes[$type]->name;
   }
-  
+
   return $options;
 }
