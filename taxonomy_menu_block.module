@@ -435,6 +435,9 @@ function taxonomy_menu_block_structure_tree($data, $vid, $lang = NULL) {
       $branch['depth'] = $term->depth;
       $branch['parents'] = $term->parents;
       $branch['active_trail'] = '0';
+      // Set alias option to true so we don't have to query for the alias every
+      // time, as this is cached anyway.
+      $branch['link_options'] = array('alias' => TRUE);
 
       $tree[$term->tid] = $branch;
     }
@@ -829,9 +832,7 @@ function theme_taxonomy_menu_block($variables) {
       $term['name'] = $term['name'] . ' (' . $term['nodes'] . ')';
     }
 
-    // Set alias option to true so we don't have to query for the alias every
-    // time, as this is cached anyway.
-    $output .= '<li' . drupal_attributes($attributes) . '>' . l($term['name'], $term['path'], $options = array('alias' => TRUE));
+    $output .= '<li' . drupal_attributes($attributes) . '>' . l($term['name'], $term['path'], $term['link_options']);
     if (!empty($term['children'])) {
       $output .= theme('taxonomy_menu_block__' . $config['delta'], (array('items' => $term['children'], 'config' => $config)));
     }
