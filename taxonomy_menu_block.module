@@ -820,6 +820,9 @@ function theme_taxonomy_menu_block($variables) {
     if ($term['active_trail'] == '2') {
       $attributes['class'][] = 'active';
     }
+    if(!empty($term['children'])) {
+      $attributes['class'][] = 'has-children';
+    }
 
     // Alter link text if we have to display the nodes attached.
     if (isset($term['nodes'])) {
